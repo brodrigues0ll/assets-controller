@@ -1,5 +1,5 @@
 services:
-  mongodb:
+  assts-controller-mongodb:
     image: mongo:7.0
     container_name: assetly-mongodb
     restart: unless-stopped
@@ -7,7 +7,10 @@ services:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: assetly_secure_password_2024
     ports:
-      - "27017:27017"
+      - "3011:27017"
+    volumes:
+      - /DATA/AppData/assets-controller/mongodb:/data/db
+      - /DATA/AppData/assets-controller/mongodb-config:/data/configdb
     networks:
       - assetly-network
 
