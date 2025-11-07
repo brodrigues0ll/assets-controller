@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
@@ -58,7 +59,13 @@ export function Sidebar({ user }) {
     <div className="flex h-full w-64 flex-col bg-gray-900">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-gray-800 px-4">
-        <h1 className="text-2xl font-bold text-white">Assetly</h1>
+        <Image
+          src="/logo-flex.svg"
+          alt="InfraLedger"
+          width={160}
+          height={40}
+          priority
+        />
       </div>
 
       {/* Navigation */}

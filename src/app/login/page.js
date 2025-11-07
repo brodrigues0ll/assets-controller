@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -42,10 +43,18 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-3xl font-bold text-center">Assetly</CardTitle>
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <Image
+              src="/logo-column.svg"
+              alt="InfraLedger"
+              width={200}
+              height={80}
+              priority
+            />
+          </div>
           <CardDescription className="text-center">
-            Sistema de Controle de Inventário - NAV Brasil
+            Sistema de Controle de Inventário
           </CardDescription>
         </CardHeader>
         <CardContent>

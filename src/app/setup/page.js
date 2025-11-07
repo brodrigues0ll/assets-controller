@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import {
@@ -100,16 +101,20 @@ export default function SetupPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-3">
-          <div className="flex items-center justify-center">
-            <div className="bg-blue-100 p-3 rounded-full">
-              <CheckCircle className="h-8 w-8 text-blue-600" />
-            </div>
+          <div className="flex justify-center">
+            <Image
+              src="/logo-column.svg"
+              alt="InfraLedger"
+              width={200}
+              height={80}
+              priority
+            />
           </div>
           <CardTitle className="text-2xl text-center">
             Configuração Inicial
           </CardTitle>
           <CardDescription className="text-center">
-            Bem-vindo ao Assetly! Este é o primeiro acesso ao sistema.
+            Bem-vindo! Este é o primeiro acesso ao sistema.
             <br />
             Crie o usuário administrador para começar.
           </CardDescription>
