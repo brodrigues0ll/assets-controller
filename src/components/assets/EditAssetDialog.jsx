@@ -320,7 +320,7 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
                     onChange={(e) => handleChange("redeVlan", e.target.value)}
                     className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Selecione</option>
+                    <option value="N/A">N/A</option>
                     <option value="Rede Operacional">Rede Operacional</option>
                     <option value="Rede Administrativa">
                       Rede Administrativa
