@@ -2,7 +2,7 @@ name: InfraLedger
 
 services:
   infra-ledger-web:
-    image: brodrigues0ll/infraledger:0.0.1
+    image: brodrigues0ll/infraledger:0.0.2
     container_name: infra-ledger-web
     restart: unless-stopped
     ports:
@@ -27,8 +27,8 @@ services:
     ports:
       - "3011:27017"
     volumes:
-      - ./DATA/AppData/assets-controller/mongodb:/data/db
-      - ./DATA/AppData/assets-controller/mongodb-config:/data/configdb
+      - ./DATA/AppData/infraledger/mongodb:/data/db
+      - ./DATA/AppData/infraledger/mongodb-config:/data/configdb
     networks:
       - assetly-network
 
