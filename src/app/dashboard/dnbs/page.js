@@ -123,12 +123,12 @@ export default function DNBsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">DNBs</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">DNBs</h1>
           <p className="text-gray-600 mt-1">Gerenciamento de localidades</p>
         </div>
-        <Button onClick={openCreateDialog}>
+        <Button onClick={openCreateDialog} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Nova DNB
         </Button>
@@ -143,6 +143,7 @@ export default function DNBsPage() {
           {dnbs.length === 0 ? (
             <p className="text-center text-gray-500 py-8">Nenhuma DNB cadastrada</p>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -190,6 +191,7 @@ export default function DNBsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

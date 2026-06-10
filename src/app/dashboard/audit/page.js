@@ -144,9 +144,9 @@ export default function AuditPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Logs de Auditoria
           </h1>
           <p className="text-gray-600 mt-1">
@@ -155,7 +155,7 @@ export default function AuditPage() {
         </div>
         <Button
           variant="outline"
-          className="gap-2"
+          className="gap-2 w-full sm:w-auto"
           onClick={handleExport}
           disabled={filteredLogs.length === 0}
         >

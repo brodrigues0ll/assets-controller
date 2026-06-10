@@ -1,0 +1,52 @@
+name: InfraLedger-dev
+
+services:
+  infra-ledger-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: infra-ledger-web-dev
+    restart: unless-stopped
+    ports:
+      - "3010:3000"
+    environment:
+      MONGODB_URI: "mongodb://admin:admin@infra-ledger-db:27017/infraledger?authSource=admin"
+      NEXTAUTH_URL: "http://localhost:3010/"
+      NEXTAUTH_SECRET: "8f4e7d6c9b2a1f3e5d8c7b4a9e2f1d3c6b5a8e7d4c9f2a1e3b6d5c8f7a4e9b2d"
+      NODE_ENV: "development"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      infra-ledger-db:
+        condition: service_healthy
+    networks:
+      - assetly-network-dev
+
+  infra-ledger-db:
+    image: mongo:7.0
+    container_name: infra-ledger-db-dev
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    ports:
+      - "3011:27017"
+    volumes:
+      - mongo-dev-data:/data/db
+    networks:
+      - assetly-network-dev
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--username", "admin", "--password", "admin", "--authenticationDatabase", "admin"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  mongo-dev-data:
+
+networks:
+  assetly-network-dev:
+    driver: bridge

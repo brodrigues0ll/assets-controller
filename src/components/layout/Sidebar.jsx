@@ -11,6 +11,7 @@ import {
   Users,
   FileText,
   LogOut,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ const navigation = [
   },
 ];
 
-export function Sidebar({ user }) {
+export function Sidebar({ user, onClose }) {
   const pathname = usePathname();
 
   const filteredNavigation = navigation.filter((item) =>
@@ -58,14 +59,23 @@ export function Sidebar({ user }) {
   return (
     <div className="flex h-full w-64 flex-col bg-gray-900">
       {/* Logo */}
-      <div className="flex h-16 items-center justify-center border-b border-gray-800 px-4">
+      <div className="flex h-16 items-center justify-between border-b border-gray-800 px-4">
         <Image
           src="/logo-flex.svg"
           alt="InfraLedger"
-          width={160}
-          height={40}
+          width={140}
+          height={36}
           priority
         />
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="md:hidden text-gray-400 hover:text-white p-1"
+            aria-label="Fechar menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}

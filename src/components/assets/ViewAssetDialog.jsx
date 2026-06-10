@@ -35,8 +35,8 @@ export function ViewAssetDialog({ open, onClose, asset }) {
   };
 
   const InfoRow = ({ label, value }) => (
-    <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-100">
-      <Label className="text-sm font-semibold text-gray-600">{label}</Label>
+    <div className="flex flex-col sm:grid sm:grid-cols-3 sm:gap-4 py-2 border-b border-gray-100 gap-0.5">
+      <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide sm:text-sm sm:normal-case sm:tracking-normal sm:font-semibold sm:text-gray-600">{label}</Label>
       <span className="col-span-2 text-sm text-gray-900">
         {value || <span className="text-gray-400">-</span>}
       </span>
@@ -45,7 +45,7 @@ export function ViewAssetDialog({ open, onClose, asset }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             Detalhes do Ativo

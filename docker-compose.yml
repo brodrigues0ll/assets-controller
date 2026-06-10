@@ -15,7 +15,7 @@ services:
     depends_on:
       - infra-ledger-db
     networks:
-      - assetly-network
+      - infraledger-network
 
   infra-ledger-db:
     image: mongo:7.0
@@ -30,10 +30,10 @@ services:
       - ./DATA/AppData/infraledger/mongodb:/data/db
       - ./DATA/AppData/infraledger/mongodb-config:/data/configdb
     networks:
-      - assetly-network
+      - infraledger-network
 
 networks:
-  assetly-network:
+  infraledger-network:
     driver: bridge
 
 x-casaos:

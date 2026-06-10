@@ -154,14 +154,14 @@ export default function AssetsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Ativos</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Ativos</h1>
           <p className="text-gray-600 mt-1">
             Gerencie o inventário de patrimônios
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             variant="outline"
             className="gap-2"
