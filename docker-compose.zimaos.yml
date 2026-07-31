@@ -31,10 +31,9 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - /DATA/AppData/infraledger/minio:/data
-    expose:
-      - "9000"
     ports:
-      - "9001:9001"
+      - "9088:9000"
+      - "9089:9001"
     networks:
       - infraledger-net
     healthcheck:
@@ -76,7 +75,7 @@ services:
       MINIO_SECRET_KEY: minioadmin
       MINIO_BUCKET: infraledger
       MINIO_USE_SSL: "false"
-      MINIO_PUBLIC_ENDPOINT: http://192.168.31.87:9000
+      MINIO_PUBLIC_ENDPOINT: http://192.168.31.87:9088
     ports:
       - "3015:3000"
     depends_on:
