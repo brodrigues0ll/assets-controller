@@ -1,133 +1,98 @@
 name: infraledger
+
 services:
-  infra_ledger_db:
-    cpu_shares: 90
-    command: []
-    deploy:
-      resources:
-        limits:
-          memory: 3993161728
-        reservations:
-          devices: []
-    environment:
-      - MONGO_INITDB_ROOT_PASSWORD=admin
-      - MONGO_INITDB_ROOT_USERNAME=admin
-    image: mongo:7.0
-    labels:
-      icon: https://i.imgur.com/BK8C3nB.png
-    ports:
-      - target: 27017
-        published: "3012"
-        protocol: tcp
-    restart: unless-stopped
-    volumes:
-      - type: bind
-        source: /DATA/AppData/infraledger/mongodb
-        target: /data/db
-      - type: bind
-        source: /DATA/AppData/infraledger/data/configdb
-        target: /data/configdb
-    devices: []
-    cap_add: []
-    networks:
-      - infraledger_network
-    privileged: false
-    container_name: ""
-
-  infra_ledger_minio:
-    cpu_shares: 90
-    command: ["server", "/data", "--console-address", ":9001"]
-    deploy:
-      resources:
-        limits:
-          memory: 3993161728
-        reservations:
-          devices: []
-    environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
+  infra-ledger-minio:
     image: minio/minio:latest
-    labels:
-      icon: https://i.imgur.com/BK8C3nB.png
-    ports:
-      - target: 9000
-        published: "9000"
-        protocol: tcp
-      - target: 9001
-        published: "9001"
-        protocol: tcp
+    container_name: infra-ledger-minio
     restart: unless-stopped
-    volumes:
-      - type: bind
-        source: /DATA/AppData/infraledger/minio
-        target: /data
-    devices: []
-    cap_add: []
-    networks:
-      - infraledger_network
-    privileged: false
-    container_name: ""
-
-  infra_ledger_web:
-    cpu_shares: 90
-    command: []
-    depends_on:
-      infra_ledger_db:
-        condition: service_started
-        required: true
-      infra_ledger_minio:
-        condition: service_started
-        required: true
-    deploy:
-      resources:
-        limits:
-          memory: 3993161728
-        reservations:
-          devices: []
     environment:
-      - MONGODB_URI=mongodb://admin:admin@192.168.31.87:3012/infraledger
-      - MONGODB_AUTH_SOURCE=admin
-      - NEXTAUTH_SECRET=8f4e7d6c9b2a1f3e5d8c7b4a9e2f1d3c6b5a8e7d4c9f2a1e3b6d5c8f7a4e9b2d
-      - NEXTAUTH_URL=http://10.104.5.17:3015/
-      - NODE_ENV=production
-      - MINIO_ENDPOINT=infra_ledger_minio
-      - MINIO_PORT=9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
-      - MINIO_BUCKET=infraledger
-      - MINIO_USE_SSL=false
-      - MINIO_PUBLIC_ENDPOINT=http://10.104.5.17:9000
-    image: brodrigues0ll/infraledger:latest
-    labels:
-      icon: https://i.imgur.com/BK8C3nB.png
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - /DATA/AppData/infraledger/minio:/data
+    expose:
+      - "9000"
     ports:
-      - target: 3000
-        published: "3015"
-        protocol: tcp
-    restart: unless-stopped
-    volumes: []
-    devices: []
-    cap_add: []
+      - "9001:9001"
     networks:
-      - infraledger_network
-    privileged: false
-    container_name: ""
+      - infraledger-net
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  infra-ledger-minio-init:
+    image: minio/mc:latest
+    container_name: infra-ledger-minio-init
+    restart: "no"
+    depends_on:
+      infra-ledger-minio:
+        condition: service_healthy
+    networks:
+      - infraledger-net
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://infra-ledger-minio:9000 minioadmin minioadmin;
+        mc mb --ignore-existing local/infraledger;
+        mc anonymous set download local/infraledger;
+        echo 'Bucket infraledger pronto.';
+      "
+
+  infra-ledger-web:
+    image: brodrigues0ll/infraledger:latest
+    container_name: infra-ledger-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://admin:admin@192.168.31.87:3012/infraledger?authSource=admin
+      NEXTAUTH_SECRET: 8f4e7d6c9b2a1f3e5d8c7b4a9e2f1d3c6b5a8e7d4c9f2a1e3b6d5c8f7a4e9b2d
+      NEXTAUTH_URL: http://10.104.5.17:3015
+      MINIO_ENDPOINT: infra-ledger-minio
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: infraledger
+      MINIO_USE_SSL: "false"
+      MINIO_PUBLIC_ENDPOINT: http://10.104.5.17:9000
+    ports:
+      - "3015:3000"
+    depends_on:
+      infra-ledger-minio:
+        condition: service_healthy
+    networks:
+      - infraledger-net
 
 networks:
-  infraledger_network:
-    name: infraledger_infraledger_network
+  infraledger-net:
     driver: bridge
 
 x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: infra-ledger-web
   author: brodrigues0ll
-  category: utilities
-  hostname: ""
-  icon: https://i.imgur.com/BK8C3nB.png
-  index: /
-  is_uncontrolled: false
-  port_map: "3015"
-  scheme: http
-  store_app_id: InfraLedger
+  developer: brodrigues0ll
+  category: Utilities
   title:
-    custom: ""
     en_us: InfraLedger
+    pt_br: InfraLedger
+  tagline:
+    en_us: Corporate asset inventory control system
+    pt_br: Sistema de controle de inventário de patrimônios
+  description:
+    en_us: Asset inventory management with QR code scanner, photo upload via MinIO, custom categories, permission groups and full audit trail.
+    pt_br: Gestão de inventário de ativos patrimoniais com scanner QR, upload de fotos via MinIO, categorias customizáveis, grupos de permissão e auditoria completa.
+  icon: https://i.imgur.com/BK8C3nB.png
+  port_map: "3015"
+  index: /
+  tips:
+    before_install:
+      pt_br: |
+        Na primeira abertura o sistema pedirá para criar o usuário administrador.
+        Console do MinIO disponível em http://[IP]:9001 (usuário: minioadmin / senha: minioadmin)
+      en_us: |
+        On first access the system will prompt you to create the admin user.
+        MinIO console available at http://[IP]:9001 (user: minioadmin / password: minioadmin)
