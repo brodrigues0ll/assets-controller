@@ -85,7 +85,7 @@ services:
         reservations:
           devices: []
     environment:
-      - MONGODB_URI=mongodb://admin:admin@infra_ledger_db:27017/infraledger?authSource=admin
+      - MONGODB_URI=mongodb://admin:admin@192.168.31.87:3012/infraledger?authSource=admin
       - NEXTAUTH_SECRET=8f4e7d6c9b2a1f3e5d8c7b4a9e2f1d3c6b5a8e7d4c9f2a1e3b6d5c8f7a4e9b2d
       - NEXTAUTH_URL=http://10.104.5.17:3015/
       - NODE_ENV=production
