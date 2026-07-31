@@ -1,6 +1,26 @@
 name: infraledger
 
 services:
+  infra-ledger-db:
+    image: mongo:7.0
+    container_name: infra-ledger-db
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    volumes:
+      - /DATA/AppData/infraledger/mongodb:/data/db
+      - /DATA/AppData/infraledger/mongodb-config:/data/configdb
+    ports:
+      - "3012:27017"
+    networks:
+      - infraledger-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--username", "admin", "--password", "admin", "--authenticationDatabase", "admin"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
   infra-ledger-minio:
     image: minio/minio:latest
     container_name: infra-ledger-minio
@@ -46,7 +66,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      MONGODB_URI: mongodb://admin:admin@192.168.31.87:3012/infraledger
+      MONGODB_URI: mongodb://admin:admin@infra-ledger-db:27017/infraledger
       MONGODB_AUTH_SOURCE: admin
       NEXTAUTH_SECRET: 8f4e7d6c9b2a1f3e5d8c7b4a9e2f1d3c6b5a8e7d4c9f2a1e3b6d5c8f7a4e9b2d
       NEXTAUTH_URL: http://10.104.5.17:3015
@@ -60,6 +80,8 @@ services:
     ports:
       - "3015:3000"
     depends_on:
+      infra-ledger-db:
+        condition: service_healthy
       infra-ledger-minio:
         condition: service_healthy
     networks:
