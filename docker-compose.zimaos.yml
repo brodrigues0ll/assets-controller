@@ -1,67 +1,54 @@
 name: infraledger
-
-# ============================================================
-# InfraLedger — Sistema de Controle de Inventário
-# Para uso pessoal no ZimaOS
-#
-# ANTES DE SUBIR:
-#   Altere MINIO_PUBLIC_ENDPOINT para o IP do seu ZimaOS.
-#   Exemplo: http://192.168.1.100:9000
-#   Esse IP é o mesmo que você usa para acessar o ZimaOS
-#   no navegador.
-# ============================================================
-
 services:
-  infra-ledger-web:
-    image: brodrigues0ll/infraledger:latest
-    container_name: infra-ledger-web
-    restart: unless-stopped
-    ports:
-      - target: 3000
-        published: "3010"
-        protocol: tcp
+  infra_ledger_db:
+    cpu_shares: 90
+    command: []
+    deploy:
+      resources:
+        limits:
+          memory: 3993161728
+        reservations:
+          devices: []
     environment:
-      MONGODB_URI: "mongodb://admin:admin@infra-ledger-db:27017/infraledger?authSource=admin"
-      NEXTAUTH_URL: "http://localhost:3010"
-      NEXTAUTH_SECRET: "8f4e7d6c9b2a1f3e5d8c7b4a9e2f1d3c6b5a8e7d4c9f2a1e3b6d5c8f7a4e9b2d"
-      NODE_ENV: "production"
-      MINIO_ENDPOINT: "infra-ledger-minio"
-      MINIO_PORT: "9000"
-      MINIO_ACCESS_KEY: "minioadmin"
-      MINIO_SECRET_KEY: "minioadmin"
-      MINIO_BUCKET: "infraledger"
-      MINIO_USE_SSL: "false"
-      # ⚠️  Altere para o IP do seu ZimaOS na rede local
-      MINIO_PUBLIC_ENDPOINT: "http://SEU_IP_ZIMA:9000"
-    depends_on:
-      infra-ledger-db:
-        condition: service_started
-      infra-ledger-minio:
-        condition: service_started
-    networks:
-      - infraledger-net
-
-  infra-ledger-db:
+      - MONGO_INITDB_ROOT_PASSWORD=admin
+      - MONGO_INITDB_ROOT_USERNAME=admin
     image: mongo:7.0
-    container_name: infra-ledger-db
+    labels:
+      icon: https://i.imgur.com/BK8C3nB.png
+    ports:
+      - target: 27017
+        published: "3012"
+        protocol: tcp
     restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
     volumes:
       - type: bind
         source: /DATA/AppData/infraledger/mongodb
         target: /data/db
       - type: bind
-        source: /DATA/AppData/infraledger/mongodb-config
+        source: /DATA/AppData/infraledger/data/configdb
         target: /data/configdb
+    devices: []
+    cap_add: []
     networks:
-      - infraledger-net
+      - infraledger_network
+    privileged: false
+    container_name: ""
 
-  infra-ledger-minio:
+  infra_ledger_minio:
+    cpu_shares: 90
+    command: server /data --console-address ":9001"
+    deploy:
+      resources:
+        limits:
+          memory: 3993161728
+        reservations:
+          devices: []
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
     image: minio/minio:latest
-    container_name: infra-ledger-minio
-    restart: unless-stopped
+    labels:
+      icon: https://i.imgur.com/BK8C3nB.png
     ports:
       - target: 9000
         published: "9000"
@@ -69,55 +56,77 @@ services:
       - target: 9001
         published: "9001"
         protocol: tcp
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+    restart: unless-stopped
     volumes:
       - type: bind
         source: /DATA/AppData/infraledger/minio
         target: /data
-    command: server /data --console-address ":9001"
+    devices: []
+    cap_add: []
     networks:
-      - infraledger-net
+      - infraledger_network
+    privileged: false
+    container_name: ""
+
+  infra_ledger_web:
+    cpu_shares: 90
+    command: []
+    depends_on:
+      infra_ledger_db:
+        condition: service_started
+        required: true
+      infra_ledger_minio:
+        condition: service_started
+        required: true
+    deploy:
+      resources:
+        limits:
+          memory: 3993161728
+        reservations:
+          devices: []
+    environment:
+      - MONGODB_URI=mongodb://admin:admin@infra_ledger_db:27017/infraledger?authSource=admin
+      - NEXTAUTH_SECRET=8f4e7d6c9b2a1f3e5d8c7b4a9e2f1d3c6b5a8e7d4c9f2a1e3b6d5c8f7a4e9b2d
+      - NEXTAUTH_URL=http://10.104.5.17:3015/
+      - NODE_ENV=production
+      - MINIO_ENDPOINT=infra_ledger_minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=infraledger
+      - MINIO_USE_SSL=false
+      - MINIO_PUBLIC_ENDPOINT=http://10.104.5.17:9000
+    image: brodrigues0ll/infraledger:latest
+    labels:
+      icon: https://i.imgur.com/BK8C3nB.png
+    ports:
+      - target: 3000
+        published: "3015"
+        protocol: tcp
+    restart: unless-stopped
+    volumes: []
+    devices: []
+    cap_add: []
+    networks:
+      - infraledger_network
+    privileged: false
+    container_name: ""
 
 networks:
-  infraledger-net:
+  infraledger_network:
+    name: infraledger_infraledger_network
     driver: bridge
 
 x-casaos:
-  architectures:
-    - amd64
-    - arm64
-    - arm
-  main: infra-ledger-web
   author: brodrigues0ll
-  category: Utilities
-  title:
-    en_us: InfraLedger
-  tagline:
-    en_us: Controle de inventário de patrimônios corporativos
-  description:
-    en_us: |
-      Sistema de controle de inventário de ativos patrimoniais.
-      Suporte a QR Code, scanner de patrimônio, upload de fotos via MinIO,
-      categorias customizáveis, grupos de permissão e auditoria completa.
-  icon: https://i.imgur.com/PuVn1jc.png
-  port_map: "3010"
+  category: utilities
+  hostname: ""
+  icon: https://i.imgur.com/BK8C3nB.png
   index: /
-  tips:
-    before_install:
-      en_us: |
-        **Configuração necessária antes de subir:**
-
-        Edite a variável `MINIO_PUBLIC_ENDPOINT` no serviço `infra-ledger-web`
-        e coloque o IP do seu ZimaOS. Exemplo:
-        ```
-        MINIO_PUBLIC_ENDPOINT: "http://192.168.1.100:9000"
-        ```
-
-        **Portas utilizadas:**
-        - `3010` — Aplicação web
-        - `9000` — MinIO (armazenamento de imagens)
-        - `9001` — Console do MinIO (admin)
-
-        **Acesso inicial:** Na primeira abertura, o sistema pedirá para criar o usuário administrador.
+  is_uncontrolled: false
+  port_map: "3015"
+  scheme: http
+  store_app_id: InfraLedger
+  title:
+    custom: ""
+    en_us: InfraLedger
