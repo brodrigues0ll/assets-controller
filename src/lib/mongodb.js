@@ -12,17 +12,35 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
+function buildUri(uri) {
+  // Remove ?authSource=... da URI e passa via opções separadas
+  // Evita problemas de truncamento em ambientes como ZimaOS
+  try {
+    const url = new URL(uri);
+    const authSource = url.searchParams.get('authSource');
+    url.searchParams.delete('authSource');
+    return { cleanUri: url.toString(), authSource };
+  } catch {
+    return { cleanUri: uri, authSource: null };
+  }
+}
+
 async function connectDB() {
   if (cached.conn) {
     return cached.conn;
   }
 
   if (!cached.promise) {
+    const { cleanUri, authSource } = buildUri(MONGODB_URI);
+
+    const resolvedAuthSource = authSource || process.env.MONGODB_AUTH_SOURCE || null;
+
     const opts = {
       bufferCommands: false,
+      ...(resolvedAuthSource ? { authSource: resolvedAuthSource } : {}),
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(cleanUri, opts).then((mongoose) => {
       return mongoose;
     });
   }
