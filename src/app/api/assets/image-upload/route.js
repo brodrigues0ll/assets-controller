@@ -1,23 +1,13 @@
-/**
- * API Route para upload de imagem de ativos.
- *
- * DEPENDÊNCIA: Este endpoint usa a API S3 do MinIO via HTTP.
- * Para ativar o upload real, configure as variáveis de ambiente:
- *   MINIO_ENDPOINT=localhost
- *   MINIO_PORT=9000
- *   MINIO_ACCESS_KEY=minioadmin
- *   MINIO_SECRET_KEY=minioadmin
- *   MINIO_BUCKET=infraledger
- *   MINIO_USE_SSL=false
- *
- * Para instalar o SDK S3: npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
- */
-
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import Asset from '@/lib/models/Asset';
+import { minioClient, BUCKET, getPublicUrl, ensureBucket } from '@/lib/minio';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_SIZE_MB = 10;
 
 export async function POST(request) {
   const session = await getServerSession(authOptions);
@@ -38,51 +28,29 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Arquivo e assetId são obrigatórios' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = `assets/${assetId}-${Date.now()}.${file.name.split('.').pop()}`;
-
-    // Verificar se MinIO está configurado
-    const minioEndpoint = process.env.MINIO_ENDPOINT;
-    const minioPort = process.env.MINIO_PORT || '9000';
-    const minioAccessKey = process.env.MINIO_ACCESS_KEY;
-    const minioSecretKey = process.env.MINIO_SECRET_KEY;
-    const minioBucket = process.env.MINIO_BUCKET || 'infraledger';
-    const minioUseSSL = process.env.MINIO_USE_SSL === 'true';
-
-    if (!minioEndpoint || !minioAccessKey || !minioSecretKey) {
-      // MinIO não configurado: retornar placeholder
-      const placeholderUrl = `/api/placeholder-image/${assetId}`;
-
-      await connectDB();
-      await Asset.findByIdAndUpdate(assetId, { imagemUrl: placeholderUrl });
-
-      return NextResponse.json({
-        url: placeholderUrl,
-        warning: 'MinIO não configurado. Instale @aws-sdk/client-s3 e configure as variáveis MINIO_* para upload real.',
-      });
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json({ error: 'Tipo de arquivo não permitido. Use JPEG, PNG, WebP ou GIF.' }, { status: 400 });
     }
 
-    // Upload para MinIO via S3 API (requer @aws-sdk/client-s3)
-    // Descomente e instale o SDK para ativar:
-    //
-    // const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
-    // const s3 = new S3Client({
-    //   endpoint: `${minioUseSSL ? 'https' : 'http'}://${minioEndpoint}:${minioPort}`,
-    //   region: 'us-east-1',
-    //   credentials: { accessKeyId: minioAccessKey, secretAccessKey: minioSecretKey },
-    //   forcePathStyle: true,
-    // });
-    // await s3.send(new PutObjectCommand({
-    //   Bucket: minioBucket,
-    //   Key: fileName,
-    //   Body: buffer,
-    //   ContentType: file.type,
-    // }));
-    // const protocol = minioUseSSL ? 'https' : 'http';
-    // const imageUrl = `${protocol}://${minioEndpoint}:${minioPort}/${minioBucket}/${fileName}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Por ora retornar placeholder até SDK instalado
-    const imageUrl = `/uploads/${fileName}`;
+    if (buffer.byteLength > MAX_SIZE_MB * 1024 * 1024) {
+      return NextResponse.json({ error: `Arquivo muito grande. Máximo ${MAX_SIZE_MB}MB.` }, { status: 400 });
+    }
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    const fileName = `assets/${assetId}-${Date.now()}.${ext}`;
+
+    await ensureBucket();
+
+    await minioClient.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: fileName,
+      Body: buffer,
+      ContentType: file.type,
+    }));
+
+    const imageUrl = getPublicUrl(fileName);
 
     await connectDB();
     await Asset.findByIdAndUpdate(assetId, { imagemUrl: imageUrl });
@@ -90,6 +58,6 @@ export async function POST(request) {
     return NextResponse.json({ url: imageUrl });
   } catch (err) {
     console.error('Erro no upload de imagem:', err);
-    return NextResponse.json({ error: 'Erro interno no upload' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro ao fazer upload da imagem. Verifique se o MinIO está rodando.' }, { status: 500 });
   }
 }

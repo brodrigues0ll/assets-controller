@@ -12,8 +12,18 @@ services:
       NEXTAUTH_URL: "http://localhost:3010/"
       NEXTAUTH_SECRET: "8f4e7d6c9b2a1f3e5d8c7b4a9e2f1d3c6b5a8e7d4c9f2a1e3b6d5c8f7a4e9b2d"
       NODE_ENV: "production"
+      MINIO_ENDPOINT: "infra-ledger-minio"
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      MINIO_BUCKET: "infraledger"
+      MINIO_USE_SSL: "false"
+      # Endereço público do MinIO acessível pelo navegador dos usuários
+      # Altere para o IP/hostname da sua VPS se necessário
+      MINIO_PUBLIC_ENDPOINT: "http://localhost:9000"
     depends_on:
       - infra-ledger-db
+      - infra-ledger-minio
     networks:
       - infraledger-network
 
@@ -31,6 +41,27 @@ services:
       - ./DATA/AppData/infraledger/mongodb-config:/data/configdb
     networks:
       - infraledger-network
+
+  infra-ledger-minio:
+    image: minio/minio:latest
+    container_name: infra-ledger-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - ./DATA/AppData/infraledger/minio:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - infraledger-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   infraledger-network:

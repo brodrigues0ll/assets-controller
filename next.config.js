@@ -9,6 +9,22 @@ const nextConfig = {
       allowedOrigins: ['localhost:3000', 'localhost:3010'],
     },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: '**',
+        port: '9000',
+        pathname: '/infraledger/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**',
+        port: '9000',
+        pathname: '/infraledger/**',
+      },
+    ],
+  },
 };
 
 module.exports = withPWA({
