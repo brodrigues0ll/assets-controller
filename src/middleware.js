@@ -44,7 +44,7 @@ export async function middleware(request) {
   }
 
   // Verificar autenticação para rotas protegidas
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin') || pathname.startsWith('/assets')) {
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin') || pathname.startsWith('/assets') || pathname.startsWith('/scan')) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
     if (!token) {

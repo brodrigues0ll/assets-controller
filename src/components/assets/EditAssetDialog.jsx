@@ -12,11 +12,107 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
-export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
+const SITUACOES = [
+  "Em estoque",
+  "Em uso",
+  "Ativo",
+  "Reserva",
+  "Em manutenção",
+  "Com defeito",
+  "Descartado",
+];
+
+const TIPOS_EQUIPAMENTO = [
+  "Computador", "Notebook", "Monitor", "Switch", "Roteador",
+  "Impressora", "Servidor", "Telefone", "Câmera", "Mobiliário", "Outro",
+];
+
+const inputClass = "w-full h-10 px-3 rounded text-sm font-mono transition-all duration-150";
+const inputStyle = {
+  background: "#141428",
+  border: "1px solid #1a3a4a",
+  color: "#e2e8f0",
+  outline: "none",
+};
+
+function CyberInput({ id, ...props }) {
+  return (
+    <input
+      id={id}
+      className={inputClass}
+      style={inputStyle}
+      onFocus={(e) => {
+        e.target.style.borderColor = "#00d4ff";
+        e.target.style.boxShadow = "0 0 0 1px #00d4ff";
+      }}
+      onBlur={(e) => {
+        e.target.style.borderColor = "#1a3a4a";
+        e.target.style.boxShadow = "none";
+      }}
+      {...props}
+    />
+  );
+}
+
+function CyberSelect({ id, children, ...props }) {
+  return (
+    <select
+      id={id}
+      className={inputClass}
+      style={inputStyle}
+      onFocus={(e) => { e.target.style.borderColor = "#00d4ff"; }}
+      onBlur={(e) => { e.target.style.borderColor = "#1a3a4a"; }}
+      {...props}
+    >
+      {children}
+    </select>
+  );
+}
+
+function CyberTextarea({ id, ...props }) {
+  return (
+    <textarea
+      id={id}
+      className="w-full px-3 py-2 rounded text-sm font-mono transition-all duration-150 resize-none"
+      style={inputStyle}
+      onFocus={(e) => {
+        e.target.style.borderColor = "#00d4ff";
+        e.target.style.boxShadow = "0 0 0 1px #00d4ff";
+      }}
+      onBlur={(e) => {
+        e.target.style.borderColor = "#1a3a4a";
+        e.target.style.boxShadow = "none";
+      }}
+      {...props}
+    />
+  );
+}
+
+function SectionTitle({ children }) {
+  return (
+    <h3
+      className="text-xs font-mono uppercase tracking-widest pb-2"
+      style={{ color: "#00d4ff", borderBottom: "1px solid #1a3a4a" }}
+    >
+      {children}
+    </h3>
+  );
+}
+
+function CyberLabel({ htmlFor, children }) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="block text-xs font-mono uppercase tracking-wider mb-1.5"
+      style={{ color: "#64748b" }}
+    >
+      {children}
+    </label>
+  );
+}
+
+export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categorias = [] }) {
   const { data: session } = useSession();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -38,8 +134,10 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
     redeVlan: "",
     portasConexoes: "",
     quantidade: "1",
-    situacao: "Ativo",
+    situacao: "Em estoque",
     observacoes: "",
+    categoria: "",
+    vinculadoA: "",
   });
 
   useEffect(() => {
@@ -61,8 +159,10 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
         redeVlan: asset.redeVlan || "",
         portasConexoes: asset.portasConexoes || "",
         quantidade: asset.quantidade?.toString() || "1",
-        situacao: asset.situacao || "Ativo",
+        situacao: asset.situacao || "Em estoque",
         observacoes: asset.observacoes || "",
+        categoria: asset.categoria?._id || asset.categoria || "",
+        vinculadoA: asset.vinculadoA?._id || asset.vinculadoA || "",
       });
     }
   }, [asset]);
@@ -71,9 +171,11 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-
     try {
-      await updateAsset(asset._id, formData);
+      const payload = { ...formData };
+      if (!payload.categoria) delete payload.categoria;
+      if (!payload.vinculadoA) delete payload.vinculadoA;
+      await updateAsset(asset._id, payload);
       onSuccess();
     } catch (err) {
       setError(err.message || "Erro ao atualizar ativo");
@@ -88,54 +190,43 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto"
+        style={{ background: "#0f0f1a", border: "1px solid #00d4ff30" }}
+      >
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Editar Ativo</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="font-mono" style={{ color: "#00d4ff" }}>
+              EDITAR ATIVO
+            </DialogTitle>
+            <DialogDescription style={{ color: "#64748b" }}>
               Atualize as informações do ativo
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-5 py-4">
             {/* Informações Básicas */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">
-                Informações Básicas
-              </h3>
-
+              <SectionTitle>Informações Básicas</SectionTitle>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="tipoEquipamento">
-                    Tipo de Equipamento *
-                  </Label>
-                  <select
+                <div>
+                  <CyberLabel htmlFor="tipoEquipamento">Tipo de Equipamento *</CyberLabel>
+                  <CyberSelect
                     id="tipoEquipamento"
                     value={formData.tipoEquipamento}
-                    onChange={(e) =>
-                      handleChange("tipoEquipamento", e.target.value)
-                    }
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => handleChange("tipoEquipamento", e.target.value)}
                     required
                   >
                     <option value="">Selecione</option>
-                    <option value="Computador">Computador</option>
-                    <option value="Notebook">Notebook</option>
-                    <option value="Monitor">Monitor</option>
-                    <option value="Switch">Switch</option>
-                    <option value="Roteador">Roteador</option>
-                    <option value="Impressora">Impressora</option>
-                    <option value="Servidor">Servidor</option>
-                    <option value="Telefone">Telefone</option>
-                    <option value="Câmera">Câmera</option>
-                    <option value="Mobiliário">Mobiliário</option>
-                    <option value="Outro">Outro</option>
-                  </select>
+                    {TIPOS_EQUIPAMENTO.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </CyberSelect>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="subtipo">Subtipo / Modelo *</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="subtipo">Subtipo / Modelo *</CyberLabel>
+                  <CyberInput
                     id="subtipo"
                     placeholder="Ex: Dell Optiplex 7010"
                     value={formData.subtipo}
@@ -144,9 +235,9 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="fabricante">Fabricante *</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="fabricante">Fabricante *</CyberLabel>
+                  <CyberInput
                     id="fabricante"
                     placeholder="Ex: Dell, HP, Cisco"
                     value={formData.fabricante}
@@ -155,14 +246,40 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="patrimonio">Patrimônio *</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="patrimonio">Patrimônio *</CyberLabel>
+                  <CyberInput
                     id="patrimonio"
-                    placeholder="Número de patrimônio NAV"
+                    placeholder="Número de patrimônio"
                     value={formData.patrimonio}
                     onChange={(e) => handleChange("patrimonio", e.target.value)}
                     required
+                  />
+                </div>
+
+                {categorias.length > 0 && (
+                  <div>
+                    <CyberLabel htmlFor="categoria">Categoria</CyberLabel>
+                    <CyberSelect
+                      id="categoria"
+                      value={formData.categoria}
+                      onChange={(e) => handleChange("categoria", e.target.value)}
+                    >
+                      <option value="">Sem categoria</option>
+                      {categorias.map((cat) => (
+                        <option key={cat._id} value={cat._id}>{cat.nome}</option>
+                      ))}
+                    </CyberSelect>
+                  </div>
+                )}
+
+                <div>
+                  <CyberLabel htmlFor="vinculadoA">Vinculado a (ID do Ativo)</CyberLabel>
+                  <CyberInput
+                    id="vinculadoA"
+                    placeholder="ID do ativo pai (opcional)"
+                    value={formData.vinculadoA}
+                    onChange={(e) => handleChange("vinculadoA", e.target.value)}
                   />
                 </div>
               </div>
@@ -170,67 +287,53 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
 
             {/* Localização */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">
-                Localização
-              </h3>
-
+              <SectionTitle>Localização</SectionTitle>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="dnb">DNB / Localidade *</Label>
-                  <select
+                <div>
+                  <CyberLabel htmlFor="dnb">DNB / Localidade *</CyberLabel>
+                  <CyberSelect
                     id="dnb"
                     value={formData.dnb}
                     onChange={(e) => handleChange("dnb", e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   >
                     <option value="">Selecione</option>
                     {dnbs.map((dnb) => (
                       <option key={dnb._id} value={dnb._id}>
-                        {dnb.code} - {dnb.name}
+                        {dnb.code} — {dnb.name}
                       </option>
                     ))}
-                  </select>
+                  </CyberSelect>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="localizacaoSetor">
-                    Localização / Setor *
-                  </Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="localizacaoSetor">Localização / Setor *</CyberLabel>
+                  <CyberInput
                     id="localizacaoSetor"
                     placeholder="Ex: OPR, ADM, TI"
                     value={formData.localizacaoSetor}
-                    onChange={(e) =>
-                      handleChange("localizacaoSetor", e.target.value)
-                    }
+                    onChange={(e) => handleChange("localizacaoSetor", e.target.value)}
                     required
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="usuarioResponsavel">
-                    Usuário Responsável
-                  </Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="usuarioResponsavel">Usuário Responsável</CyberLabel>
+                  <CyberInput
                     id="usuarioResponsavel"
                     placeholder="Nome do usuário"
                     value={formData.usuarioResponsavel}
-                    onChange={(e) =>
-                      handleChange("usuarioResponsavel", e.target.value)
-                    }
+                    onChange={(e) => handleChange("usuarioResponsavel", e.target.value)}
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="funcaoPerfil">Função / Perfil</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="funcaoPerfil">Função / Perfil</CyberLabel>
+                  <CyberInput
                     id="funcaoPerfil"
                     placeholder="Ex: OPR, ADM, Téc."
                     value={formData.funcaoPerfil}
-                    onChange={(e) =>
-                      handleChange("funcaoPerfil", e.target.value)
-                    }
+                    onChange={(e) => handleChange("funcaoPerfil", e.target.value)}
                   />
                 </div>
               </div>
@@ -238,26 +341,21 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
 
             {/* Identificação */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">
-                Identificação
-              </h3>
-
+              <SectionTitle>Identificação</SectionTitle>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="numeroSerie">Número de Série</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="numeroSerie">Número de Série</CyberLabel>
+                  <CyberInput
                     id="numeroSerie"
                     placeholder="S/N do equipamento"
                     value={formData.numeroSerie}
-                    onChange={(e) =>
-                      handleChange("numeroSerie", e.target.value)
-                    }
+                    onChange={(e) => handleChange("numeroSerie", e.target.value)}
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="hostname">Hostname / Identificação</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="hostname">Hostname / Identificação</CyberLabel>
+                  <CyberInput
                     id="hostname"
                     placeholder="Nome na rede"
                     value={formData.hostname}
@@ -265,17 +363,13 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="sistemaOperacional">
-                    Sistema Operacional / Firmware
-                  </Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="sistemaOperacional">Sistema Operacional / Firmware</CyberLabel>
+                  <CyberInput
                     id="sistemaOperacional"
                     placeholder="Ex: Windows 11, Linux"
                     value={formData.sistemaOperacional}
-                    onChange={(e) =>
-                      handleChange("sistemaOperacional", e.target.value)
-                    }
+                    onChange={(e) => handleChange("sistemaOperacional", e.target.value)}
                   />
                 </div>
               </div>
@@ -283,60 +377,49 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
 
             {/* Rede */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">
-                Configuração de Rede
-              </h3>
-
+              <SectionTitle>Configuração de Rede (Opcional)</SectionTitle>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="enderecoIp">Endereço IP</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="enderecoIp">Endereço IP</CyberLabel>
+                  <CyberInput
                     id="enderecoIp"
                     placeholder="Ex: 192.168.1.100"
                     value={formData.enderecoIp}
-                    onChange={(e) =>
-                      handleChange("enderecoIp", e.target.value)
-                    }
+                    onChange={(e) => handleChange("enderecoIp", e.target.value)}
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="ipGerencia">IP de Gerência</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="ipGerencia">IP de Gerência</CyberLabel>
+                  <CyberInput
                     id="ipGerencia"
                     placeholder="IP de gerenciamento"
                     value={formData.ipGerencia}
-                    onChange={(e) =>
-                      handleChange("ipGerencia", e.target.value)
-                    }
+                    onChange={(e) => handleChange("ipGerencia", e.target.value)}
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="redeVlan">Rede / VLAN</Label>
-                  <select
+                <div>
+                  <CyberLabel htmlFor="redeVlan">Rede / VLAN</CyberLabel>
+                  <CyberSelect
                     id="redeVlan"
                     value={formData.redeVlan}
                     onChange={(e) => handleChange("redeVlan", e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
+                    <option value="">Selecione</option>
+                    <option value="Operacional">Operacional</option>
+                    <option value="Administrativa">Administrativa</option>
                     <option value="N/A">N/A</option>
-                    <option value="Rede Operacional">Rede Operacional</option>
-                    <option value="Rede Administrativa">
-                      Rede Administrativa
-                    </option>
-                  </select>
+                  </CyberSelect>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="portasConexoes">Portas / Conexões</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="portasConexoes">Portas / Conexões</CyberLabel>
+                  <CyberInput
                     id="portasConexoes"
                     placeholder="Ex: Porta 1, Uplink"
                     value={formData.portasConexoes}
-                    onChange={(e) =>
-                      handleChange("portasConexoes", e.target.value)
-                    }
+                    onChange={(e) => handleChange("portasConexoes", e.target.value)}
                   />
                 </div>
               </div>
@@ -344,30 +427,25 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
 
             {/* Status */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">
-                Status e Observações
-              </h3>
-
+              <SectionTitle>Status e Observações</SectionTitle>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="situacao">Situação *</Label>
-                  <select
+                <div>
+                  <CyberLabel htmlFor="situacao">Situação *</CyberLabel>
+                  <CyberSelect
                     id="situacao"
                     value={formData.situacao}
                     onChange={(e) => handleChange("situacao", e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   >
-                    <option value="Ativo">Ativo</option>
-                    <option value="Reserva">Reserva</option>
-                    <option value="Em manutenção">Em manutenção</option>
-                    <option value="Descartado">Descartado</option>
-                  </select>
+                    {SITUACOES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </CyberSelect>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="quantidade">Quantidade *</Label>
-                  <Input
+                <div>
+                  <CyberLabel htmlFor="quantidade">Quantidade *</CyberLabel>
+                  <CyberInput
                     id="quantidade"
                     type="number"
                     min="1"
@@ -378,9 +456,9 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="observacoes">Observações</Label>
-                <Textarea
+              <div>
+                <CyberLabel htmlFor="observacoes">Observações</CyberLabel>
+                <CyberTextarea
                   id="observacoes"
                   placeholder="Informações adicionais..."
                   value={formData.observacoes}
@@ -391,7 +469,14 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
             </div>
 
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <div
+                className="text-sm px-4 py-3 rounded"
+                style={{
+                  background: "#ff2d5510",
+                  border: "1px solid #ff2d5540",
+                  color: "#ff2d55",
+                }}
+              >
                 {error}
               </div>
             )}
@@ -403,10 +488,24 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs }) {
               variant="outline"
               onClick={onClose}
               disabled={submitting}
+              style={{
+                background: "#141428",
+                border: "1px solid #1a3a4a",
+                color: "#64748b",
+              }}
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button
+              type="submit"
+              disabled={submitting}
+              style={{
+                background: submitting ? "#00d4ff60" : "#00d4ff",
+                color: "#0a0a0f",
+                fontFamily: "monospace",
+                fontWeight: 600,
+              }}
+            >
               {submitting ? "Atualizando..." : "Atualizar Ativo"}
             </Button>
           </DialogFooter>

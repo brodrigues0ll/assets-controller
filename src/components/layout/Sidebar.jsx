@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
@@ -11,7 +10,11 @@ import {
   Users,
   FileText,
   LogOut,
-  X,
+  ScanLine,
+  Tag,
+  Shield,
+  ChevronRight,
+  Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,9 +33,21 @@ const navigation = [
     roles: ["tecnico", "gestor", "administrador"],
   },
   {
+    name: "Scanner",
+    href: "/scan",
+    icon: ScanLine,
+    roles: ["tecnico", "gestor", "administrador"],
+  },
+  {
     name: "DNBs",
     href: "/dashboard/dnbs",
     icon: MapPin,
+    roles: ["gestor", "administrador"],
+  },
+  {
+    name: "Categorias",
+    href: "/dashboard/categorias",
+    icon: Tag,
     roles: ["gestor", "administrador"],
   },
   {
@@ -42,6 +57,12 @@ const navigation = [
     roles: ["gestor", "administrador"],
   },
   {
+    name: "Grupos",
+    href: "/dashboard/grupos",
+    icon: Shield,
+    roles: ["administrador"],
+  },
+  {
     name: "Auditoria",
     href: "/dashboard/audit",
     icon: FileText,
@@ -49,73 +70,184 @@ const navigation = [
   },
 ];
 
-export function Sidebar({ user, onClose }) {
+const roleLabels = {
+  tecnico: "TEC",
+  gestor: "GST",
+  administrador: "ADM",
+};
+
+const roleColors = {
+  tecnico: "text-cyber-cyan",
+  gestor: "text-cyber-green",
+  administrador: "text-cyber-purple",
+};
+
+export function Sidebar({ user }) {
   const pathname = usePathname();
 
   const filteredNavigation = navigation.filter((item) =>
     item.roles.includes(user.role)
   );
 
+  const isActive = (href) => {
+    if (href === "/dashboard") return pathname === "/dashboard";
+    return pathname === href || pathname.startsWith(href + "/");
+  };
+
   return (
-    <div className="flex h-full w-64 flex-col bg-gray-900">
+    <div
+      className="flex h-full w-64 flex-col"
+      style={{
+        background: "#0a0a0f",
+        borderRight: "1px solid #1a3a4a",
+      }}
+    >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between border-b border-gray-800 px-4">
-        <Image
-          src="/logo-flex.svg"
-          alt="InfraLedger"
-          width={140}
-          height={36}
-          priority
-        />
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="md:hidden text-gray-400 hover:text-white p-1"
-            aria-label="Fechar menu"
+      <div
+        className="flex h-16 items-center gap-3 px-5"
+        style={{ borderBottom: "1px solid #1a3a4a" }}
+      >
+        <div
+          className="flex items-center justify-center w-8 h-8 rounded"
+          style={{
+            background: "#00d4ff15",
+            border: "1px solid #00d4ff40",
+          }}
+        >
+          <Cpu className="h-4 w-4" style={{ color: "#00d4ff" }} />
+        </div>
+        <div>
+          <h1
+            className="text-base font-bold tracking-widest font-mono"
+            style={{
+              color: "#00d4ff",
+              textShadow: "0 0 10px #00d4ff60",
+            }}
           >
-            <X className="h-5 w-5" />
-          </button>
-        )}
+            INFRALEDGER
+          </h1>
+          <p className="text-xs font-mono" style={{ color: "#1a3a4a" }}>
+            v1.0 // SISTEMA
+          </p>
+        </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-2 py-4">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <p
+          className="text-xs font-mono uppercase tracking-widest px-3 pb-2 mb-1"
+          style={{ color: "#1a3a4a", borderBottom: "1px solid #1a3a4a10" }}
+        >
+          Navegação
+        </p>
         {filteredNavigation.map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          const active = isActive(item.href);
           return (
             <Link
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                "flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-all duration-150 group relative",
+                active
+                  ? "border-l-2"
+                  : "border-l-2 border-transparent"
               )}
+              style={
+                active
+                  ? {
+                      background: "#00d4ff0f",
+                      borderLeftColor: "#00d4ff",
+                      color: "#00d4ff",
+                    }
+                  : {
+                      color: "#64748b",
+                    }
+              }
+              onMouseEnter={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background = "#00d4ff08";
+                  e.currentTarget.style.color = "#94a3b8";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#64748b";
+                }
+              }}
             >
-              <item.icon className="h-5 w-5" />
-              {item.name}
+              <item.icon
+                className="h-4 w-4 flex-shrink-0"
+                style={active ? { color: "#00d4ff" } : {}}
+              />
+              <span className={active ? "font-semibold" : ""}>{item.name}</span>
+              {active && (
+                <ChevronRight
+                  className="h-3 w-3 ml-auto"
+                  style={{ color: "#00d4ff60" }}
+                />
+              )}
             </Link>
           );
         })}
       </nav>
 
       {/* User Info */}
-      <div className="border-t border-gray-800 p-4">
-        <div className="mb-2 text-sm text-gray-400">
-          <p className="font-medium text-white">{user.name}</p>
-          <p className="text-xs capitalize">{user.role}</p>
-          {user.dnb && <p className="text-xs text-gray-500">{user.dnb.code}</p>}
-        </div>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-gray-400 hover:text-white"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+      <div
+        className="p-4"
+        style={{ borderTop: "1px solid #1a3a4a" }}
+      >
+        <div
+          className="flex items-center gap-3 p-3 rounded mb-3"
+          style={{
+            background: "#0f0f1a",
+            border: "1px solid #1a3a4a",
+          }}
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          Sair
-        </Button>
+          <div
+            className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 font-mono font-bold text-xs"
+            style={{
+              background: "#00d4ff15",
+              border: "1px solid #00d4ff30",
+              color: "#00d4ff",
+            }}
+          >
+            {user.name?.charAt(0)?.toUpperCase() || "U"}
+          </div>
+          <div className="min-w-0">
+            <p
+              className="font-medium text-sm truncate"
+              style={{ color: "#e2e8f0" }}
+            >
+              {user.name}
+            </p>
+            <p
+              className="text-xs font-mono"
+              style={{ color: roleColors[user.role] ? "#00d4ff" : "#64748b" }}
+            >
+              [{roleLabels[user.role] || user.role}]
+              {user.dnb && (
+                <span style={{ color: "#64748b" }}> // {user.dnb.code}</span>
+              )}
+            </p>
+          </div>
+        </div>
+        <button
+          className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm transition-all duration-150"
+          style={{ color: "#64748b" }}
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#ff2d5510";
+            e.currentTarget.style.color = "#ff2d55";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "#64748b";
+          }}
+        >
+          <LogOut className="h-4 w-4" />
+          Sair do Sistema
+        </button>
       </div>
     </div>
   );

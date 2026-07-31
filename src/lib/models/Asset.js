@@ -1,114 +1,126 @@
-import mongoose from "mongoose";
-import { v4 as uuidv4 } from "uuid";
+import mongoose from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 
 const AssetSchema = new mongoose.Schema({
   assetId: {
     type: String,
     default: () => uuidv4(),
     unique: true,
-    required: true,
+    required: true
   },
   tipoEquipamento: {
     type: String,
-    required: [true, "Tipo de equipamento é obrigatório"],
-    trim: true,
+    required: [true, 'Tipo de equipamento é obrigatório'],
+    trim: true
   },
   subtipo: {
     type: String,
-    required: [true, "Subtipo/Modelo é obrigatório"],
-    trim: true,
+    required: [true, 'Subtipo/Modelo é obrigatório'],
+    trim: true
   },
   fabricante: {
     type: String,
-    required: [true, "Fabricante é obrigatório"],
-    trim: true,
+    required: [true, 'Fabricante é obrigatório'],
+    trim: true
   },
   usuarioResponsavel: {
     type: String,
-    trim: true,
+    trim: true
   },
   funcaoPerfil: {
     type: String,
-    trim: true,
+    trim: true
   },
   localizacaoSetor: {
     type: String,
-    required: [true, "Localização/Setor é obrigatório"],
-    trim: true,
+    required: [true, 'Localização/Setor é obrigatório'],
+    trim: true
   },
   dnb: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "DNB",
-    required: [true, "DNB é obrigatória"],
+    ref: 'DNB',
+    required: [true, 'DNB é obrigatória']
   },
   patrimonio: {
     type: String,
-    required: [true, "Patrimônio é obrigatório"],
+    required: [true, 'Patrimônio é obrigatório'],
     unique: true,
-    trim: true,
+    trim: true
   },
   numeroSerie: {
     type: String,
-    trim: true,
+    trim: true
   },
   hostname: {
     type: String,
-    trim: true,
+    trim: true
   },
   enderecoIp: {
     type: String,
-    trim: true,
+    trim: true
   },
   sistemaOperacional: {
     type: String,
-    trim: true,
+    trim: true
   },
   ipGerencia: {
     type: String,
-    trim: true,
+    trim: true
   },
   redeVlan: {
     type: String,
-    enum: ["Rede Operacional", "Rede Administrativa", "N/A"],
-    default: "N/A",
+    enum: ['Rede Operacional', 'Rede Administrativa', 'Operacional', 'Administrativa', 'N/A'],
+    default: 'N/A'
   },
   portasConexoes: {
     type: String,
-    trim: true,
+    trim: true
   },
   quantidade: {
     type: Number,
-    required: [true, "Quantidade é obrigatória"],
+    required: [true, 'Quantidade é obrigatória'],
     default: 1,
-    min: 1,
+    min: 1
   },
   situacao: {
     type: String,
-    required: [true, "Situação é obrigatória"],
-    enum: ["Ativo", "Reserva", "Em manutenção", "Descartado"],
-    default: "Ativo",
+    required: [true, 'Situação é obrigatória'],
+    enum: ['Ativo', 'Em uso', 'Em estoque', 'Com defeito', 'Em manutenção', 'Reserva', 'Descartado'],
+    default: 'Em estoque'
   },
   observacoes: {
     type: String,
-    trim: true,
+    trim: true
+  },
+  imagemUrl: {
+    type: String,
+    trim: true
+  },
+  vinculadoA: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Asset'
+  },
+  categoria: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Categoria'
   },
   cadastradoPor: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
+    ref: 'User',
+    required: true
   },
   editadoPor: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: 'User'
   },
   createdAt: {
     type: Date,
-    default: Date.now,
+    default: Date.now
   },
   updatedAt: {
     type: Date,
-    default: Date.now,
-  },
+    default: Date.now
+  }
 });
 
 // Índices para busca rápida
@@ -116,14 +128,12 @@ AssetSchema.index({ patrimonio: 1 });
 AssetSchema.index({ dnb: 1 });
 AssetSchema.index({ tipoEquipamento: 1 });
 AssetSchema.index({ situacao: 1 });
+AssetSchema.index({ categoria: 1 });
 
 // Atualizar updatedAt antes de cada update
-AssetSchema.pre(
-  ["findOneAndUpdate", "updateOne", "updateMany"],
-  function (next) {
-    this.set({ updatedAt: new Date() });
-    next();
-  }
-);
+AssetSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function(next) {
+  this.set({ updatedAt: new Date() });
+  next();
+});
 
-export default mongoose.models.Asset || mongoose.model("Asset", AssetSchema);
+export default mongoose.models.Asset || mongoose.model('Asset', AssetSchema);

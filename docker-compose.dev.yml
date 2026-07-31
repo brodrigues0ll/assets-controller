@@ -10,10 +10,16 @@ services:
     ports:
       - "3010:3000"
     environment:
-      MONGODB_URI: "mongodb://admin:admin@infra-ledger-db:27017/infraledger?authSource=admin"
+      MONGODB_URI: "mongodb://admin:admin@192.168.31.87:3012/infraledger?authSource=admin"
       NEXTAUTH_URL: "http://localhost:3010/"
       NEXTAUTH_SECRET: "8f4e7d6c9b2a1f3e5d8c7b4a9e2f1d3c6b5a8e7d4c9f2a1e3b6d5c8f7a4e9b2d"
       NODE_ENV: "development"
+      MINIO_ENDPOINT: "infra-ledger-minio"
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      MINIO_BUCKET: "infraledger"
+      MINIO_USE_SSL: "false"
     volumes:
       - .:/app
       - /app/node_modules
@@ -38,14 +44,43 @@ services:
     networks:
       - assetly-network-dev
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--username", "admin", "--password", "admin", "--authenticationDatabase", "admin"]
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--eval",
+          "db.adminCommand('ping')",
+          "--username",
+          "admin",
+          "--password",
+          "admin",
+          "--authenticationDatabase",
+          "admin",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
 
+  infra-ledger-minio:
+    image: minio/minio:latest
+    container_name: infra-ledger-minio-dev
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-dev-data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - assetly-network-dev
+
 volumes:
   mongo-dev-data:
+  minio-dev-data:
 
 networks:
   assetly-network-dev:
