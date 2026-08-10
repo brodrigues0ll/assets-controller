@@ -12,10 +12,14 @@ import Link from "next/link";
 import { ChevronRight, Save, X, Upload, Trash2, Package, Wifi, Camera } from "lucide-react";
 import { CameraCapture } from "@/components/CameraCapture";
 
-const SITUACOES = [
+const SITUACOES_TI = [
   "Em estoque", "Em uso", "Ativo", "Reserva",
   "Em manutenção", "Com defeito", "Descartado",
 ];
+
+const SITUACOES_BEM = ["Uso próprio", "Em andamento", "Em depósito", "Não Localizado"];
+const SITUACOES_OPERACIONAIS = ["Em uso", "Inservível", "Não Localizado", "Outros"];
+const CLASSIFICACOES = ["Ocioso", "Recuperável", "Antieconômico", "Irrecuperável"];
 
 const inputStyle = {
   background: "#141428",
@@ -74,6 +78,22 @@ function CyberLabel({ htmlFor, children }) {
   );
 }
 
+function Toggle({ checked, onChange, label }) {
+  return (
+    <label className="flex items-center gap-3 cursor-pointer">
+      <div
+        className="relative w-10 h-6 rounded-full transition-all flex-shrink-0"
+        style={{ background: checked ? "#00d4ff" : "#1a3a4a" }}
+        onClick={() => onChange(!checked)}
+      >
+        <div className="absolute top-1 w-4 h-4 rounded-full bg-white transition-all"
+          style={{ left: checked ? "22px" : "2px" }} />
+      </div>
+      <span className="text-sm font-mono" style={{ color: "#e2e8f0" }}>{label}</span>
+    </label>
+  );
+}
+
 function PatrimonioSearch({ value, onChange, excludeId }) {
   const [query, setQuery] = useState(value || "");
   const [results, setResults] = useState([]);
@@ -117,7 +137,7 @@ function PatrimonioSearch({ value, onChange, excludeId }) {
     <div className="relative" ref={wrapRef}>
       <input
         className={inputClass} style={inputStyle}
-        placeholder="Patrimônio do ativo pai (opcional)"
+        placeholder="Patrimônio / Plaqueta do ativo pai (opcional)"
         value={query}
         onChange={handleInput}
         onFocus={(e) => { e.target.style.borderColor = "#00d4ff"; e.target.style.boxShadow = "0 0 0 1px #00d4ff"; if (results.length > 0) setOpen(true); }}
@@ -134,7 +154,7 @@ function PatrimonioSearch({ value, onChange, excludeId }) {
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
               <span style={{ color: "#00d4ff" }}>{a.patrimonio}</span>
-              <span className="text-xs" style={{ color: "#64748b" }}>{a.categoria?.nome || ""} {a.subtipo}</span>
+              <span className="text-xs" style={{ color: "#64748b" }}>{a.categoria?.nome || ""} {a.tipoEquipamento || a.subtipo}</span>
             </button>
           ))}
         </div>
@@ -144,10 +164,23 @@ function PatrimonioSearch({ value, onChange, excludeId }) {
 }
 
 const DEFAULT_ASSET_FORM = {
-  categoria: "", subtipo: "", fabricante: "", usuarioResponsavel: "", funcaoPerfil: "",
-  setor: "", dnb: "", patrimonio: "", numeroSerie: "", hostname: "", enderecoIp: "",
-  sistemaOperacional: "", ipGerencia: "", redeVlan: "", portasConexoes: "",
-  quantidade: "1", situacao: "Em estoque", observacoes: "", vinculadoA: "",
+  // Identificação
+  tipoEquipamento: "", categoria: "", subtipo: "", fabricante: "",
+  patrimonio: "", ativoSAP: "", plaquetaNAV: "", numeroSerie: "", quantidade: "1",
+  vinculadoA: "",
+  // Localização
+  dnb: "", setor: "",
+  // Detentor Patrimonial
+  detentorNome: "", detentorMatricula: "",
+  // Uso Operacional
+  usuarioResponsavel: "", funcaoPerfil: "",
+  // Situação Patrimonial
+  situacaoBem: "Uso próprio", situacaoOperacional: "Em uso",
+  condicoesUso: true, classificacaoInservivel: "", statusLocalizacao: "Localizado", descricaoCompleta: true,
+  // Rede / TI
+  hostname: "", enderecoIp: "", sistemaOperacional: "", ipGerencia: "", redeVlan: "", portasConexoes: "",
+  // TI
+  situacao: "Em estoque", observacoes: "",
 };
 
 export default function NewAssetPage() {
@@ -172,28 +205,7 @@ export default function NewAssetPage() {
   const [showCamera, setShowCamera] = useState(false);
 
   const fileInputRef = useRef(null);
-
-  const [formData, setFormData] = useState({
-    categoria: "",
-    subtipo: "",
-    fabricante: "",
-    usuarioResponsavel: "",
-    funcaoPerfil: "",
-    setor: "",
-    dnb: "",
-    patrimonio: "",
-    numeroSerie: "",
-    hostname: "",
-    enderecoIp: "",
-    sistemaOperacional: "",
-    ipGerencia: "",
-    redeVlan: "",
-    portasConexoes: "",
-    quantidade: "1",
-    situacao: "Em estoque",
-    observacoes: "",
-    vinculadoA: "",
-  });
+  const [formData, setFormData] = useState({ ...DEFAULT_ASSET_FORM });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -257,6 +269,9 @@ export default function NewAssetPage() {
       const payload = { ...formData };
       if (!payload.vinculadoA) delete payload.vinculadoA;
       if (!payload.setor) delete payload.setor;
+      if (!payload.classificacaoInservivel || payload.situacaoOperacional !== "Inservível") {
+        delete payload.classificacaoInservivel;
+      }
       if (!showRede) {
         payload.hostname = "";
         payload.enderecoIp = "";
@@ -313,7 +328,7 @@ export default function NewAssetPage() {
       {showCamera && (
         <CameraCapture onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />
       )}
-      {/* Breadcrumb */}
+
       <div className="flex items-center gap-1 text-xs font-mono" style={{ color: "#64748b" }}>
         <Link href="/dashboard" style={{ color: "#64748b" }}>Dashboard</Link>
         <ChevronRight className="h-3 w-3" />
@@ -334,7 +349,8 @@ export default function NewAssetPage() {
       </div>
 
       <form onSubmit={handleSubmit} ref={formRef} className="space-y-5">
-        {/* Foto */}
+
+        {/* ── Foto ──────────────────────────────────────────────────────────── */}
         <div className="rounded-lg p-5" style={{ background: "#0f0f1a", border: "1px solid #1a3a4a" }}>
           <SectionTitle>Foto do Ativo</SectionTitle>
           <div className="flex items-start gap-5">
@@ -371,10 +387,20 @@ export default function NewAssetPage() {
           </div>
         </div>
 
-        {/* Informações Básicas */}
+        {/* ── Identificação do Bem ──────────────────────────────────────────── */}
         <div className="rounded-lg p-5" style={{ background: "#0f0f1a", border: "1px solid #1a3a4a" }}>
-          <SectionTitle>Informações Básicas</SectionTitle>
+          <SectionTitle>Identificação do Bem</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="md:col-span-2">
+              <CyberLabel htmlFor="tipoEquipamento">Denominação / Tipo do Bem</CyberLabel>
+              <CyberInput id="tipoEquipamento"
+                placeholder="Ex: MONITOR DE VIDEO, MICROCOMPUTADOR, CONDICIONADOR DE AR"
+                value={formData.tipoEquipamento}
+                onChange={(e) => handleChange("tipoEquipamento", e.target.value)} />
+              <p className="text-xs mt-1" style={{ color: "#374151" }}>Denominação padronizada do bem — equivale à col. "Denominação do imobilizado" da planilha NAV</p>
+            </div>
+
             <div>
               <CyberLabel htmlFor="categoria">Categoria / Tipo *</CyberLabel>
               <CyberSelect id="categoria" value={formData.categoria}
@@ -385,8 +411,9 @@ export default function NewAssetPage() {
             </div>
 
             <div>
-              <CyberLabel htmlFor="subtipo">Subtipo / Modelo *</CyberLabel>
-              <CyberInput id="subtipo" placeholder="Ex: Dell Optiplex 7010" value={formData.subtipo}
+              <CyberLabel htmlFor="subtipo">Modelo *</CyberLabel>
+              <CyberInput id="subtipo" placeholder="Ex: Dell Optiplex 7010, AOC 22B2H"
+                value={formData.subtipo}
                 onChange={(e) => handleChange("subtipo", e.target.value)} required />
             </div>
 
@@ -400,9 +427,41 @@ export default function NewAssetPage() {
             </div>
 
             <div>
-              <CyberLabel htmlFor="patrimonio">Patrimônio *</CyberLabel>
-              <CyberInput id="patrimonio" placeholder="Número de patrimônio" value={formData.patrimonio}
+              <CyberLabel htmlFor="patrimonio">Patrimônio / Plaqueta *</CyberLabel>
+              <CyberInput id="patrimonio"
+                placeholder="Número da etiqueta física (ex: 10012174)"
+                value={formData.patrimonio}
                 onChange={(e) => handleChange("patrimonio", e.target.value)} required />
+              <p className="text-xs mt-1" style={{ color: "#374151" }}>= "Plaqueta" na planilha NAV (etiqueta física de 8 dígitos)</p>
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="ativoSAP">Ativo nº (SAP)</CyberLabel>
+              <CyberInput id="ativoSAP"
+                placeholder="Código SAP (ex: 100001217400)"
+                value={formData.ativoSAP}
+                onChange={(e) => handleChange("ativoSAP", e.target.value)} />
+              <p className="text-xs mt-1" style={{ color: "#374151" }}>= "Ativo nº" na planilha NAV (código SAP de 12 dígitos)</p>
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="plaquetaNAV">Plaqueta NAV</CyberLabel>
+              <CyberInput id="plaquetaNAV"
+                placeholder="Código da plaqueta emitida pela NAV Brasil"
+                value={formData.plaquetaNAV}
+                onChange={(e) => handleChange("plaquetaNAV", e.target.value)} />
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="numeroSerie">Número de Série</CyberLabel>
+              <CyberInput id="numeroSerie" placeholder="S/N do equipamento" value={formData.numeroSerie}
+                onChange={(e) => handleChange("numeroSerie", e.target.value)} />
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="quantidade">Quantidade *</CyberLabel>
+              <CyberInput id="quantidade" type="number" min="1" value={formData.quantidade}
+                onChange={(e) => handleChange("quantidade", e.target.value)} required />
             </div>
 
             <div className="md:col-span-2">
@@ -412,10 +471,10 @@ export default function NewAssetPage() {
           </div>
         </div>
 
-        {/* Localização */}
+        {/* ── Localização ───────────────────────────────────────────────────── */}
         <div className="rounded-lg p-5" style={{ background: "#0f0f1a", border: "1px solid #1a3a4a" }}>
           <SectionTitle>Localização</SectionTitle>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <CyberLabel htmlFor="dnb">DNB / Localidade *</CyberLabel>
               <CyberSelect id="dnb" value={formData.dnb}
@@ -448,13 +507,39 @@ export default function NewAssetPage() {
                 ))}
               </CyberSelect>
             </div>
+          </div>
+        </div>
 
+        {/* ── Detentor Patrimonial ───────────────────────────────────────────── */}
+        <div className="rounded-lg p-5" style={{ background: "#0f0f1a", border: "1px solid #1a3a4a" }}>
+          <SectionTitle>Detentor Patrimonial</SectionTitle>
+          <p className="text-xs font-mono mb-4" style={{ color: "#374151" }}>
+            Servidor que assinou o Termo de Responsabilidade Patrimonial — equivale ao campo "Detentor" da planilha NAV Brasil.
+            <span className="ml-1" style={{ color: "#64748b" }}>Diferente do Usuário Responsável (uso operacional).</span>
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <CyberLabel htmlFor="detentorNome">Detentor</CyberLabel>
+              <CyberInput id="detentorNome" placeholder="Nome completo do detentor" value={formData.detentorNome}
+                onChange={(e) => handleChange("detentorNome", e.target.value)} />
+            </div>
+            <div>
+              <CyberLabel htmlFor="detentorMatricula">Matrícula do Detentor</CyberLabel>
+              <CyberInput id="detentorMatricula" placeholder="Matrícula do servidor" value={formData.detentorMatricula}
+                onChange={(e) => handleChange("detentorMatricula", e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Uso Operacional ────────────────────────────────────────────────── */}
+        <div className="rounded-lg p-5" style={{ background: "#0f0f1a", border: "1px solid #1a3a4a" }}>
+          <SectionTitle>Uso Operacional</SectionTitle>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <CyberLabel htmlFor="usuarioResponsavel">Usuário Responsável</CyberLabel>
-              <CyberInput id="usuarioResponsavel" placeholder="Nome do usuário" value={formData.usuarioResponsavel}
+              <CyberInput id="usuarioResponsavel" placeholder="Quem utiliza o equipamento" value={formData.usuarioResponsavel}
                 onChange={(e) => handleChange("usuarioResponsavel", e.target.value)} />
             </div>
-
             <div>
               <CyberLabel htmlFor="funcaoPerfil">Função / Perfil</CyberLabel>
               <CyberInput id="funcaoPerfil" placeholder="Ex: OPR, ADM, Téc." value={formData.funcaoPerfil}
@@ -463,25 +548,65 @@ export default function NewAssetPage() {
           </div>
         </div>
 
-        {/* Identificação */}
+        {/* ── Situação Patrimonial ───────────────────────────────────────────── */}
         <div className="rounded-lg p-5" style={{ background: "#0f0f1a", border: "1px solid #1a3a4a" }}>
-          <SectionTitle>Identificação</SectionTitle>
+          <SectionTitle>Situação Patrimonial</SectionTitle>
+          <p className="text-xs font-mono mb-4" style={{ color: "#374151" }}>
+            Campos equivalentes às colunas "Situação do Bem", "Situação", "Status" e "Condições de Uso" da planilha NAV Brasil.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <CyberLabel htmlFor="numeroSerie">Número de Série</CyberLabel>
-              <CyberInput id="numeroSerie" placeholder="S/N do equipamento" value={formData.numeroSerie}
-                onChange={(e) => handleChange("numeroSerie", e.target.value)} />
+              <CyberLabel htmlFor="situacaoBem">Situação do Bem</CyberLabel>
+              <CyberSelect id="situacaoBem" value={formData.situacaoBem}
+                onChange={(e) => handleChange("situacaoBem", e.target.value)}>
+                {SITUACOES_BEM.map((s) => <option key={s} value={s}>{s}</option>)}
+              </CyberSelect>
             </div>
 
             <div>
-              <CyberLabel htmlFor="quantidade">Quantidade *</CyberLabel>
-              <CyberInput id="quantidade" type="number" min="1" value={formData.quantidade}
-                onChange={(e) => handleChange("quantidade", e.target.value)} required />
+              <CyberLabel htmlFor="situacaoOperacional">Situação Operacional</CyberLabel>
+              <CyberSelect id="situacaoOperacional" value={formData.situacaoOperacional}
+                onChange={(e) => { handleChange("situacaoOperacional", e.target.value); if (e.target.value !== "Inservível") handleChange("classificacaoInservivel", ""); }}>
+                {SITUACOES_OPERACIONAIS.map((s) => <option key={s} value={s}>{s}</option>)}
+              </CyberSelect>
+            </div>
+
+            {formData.situacaoOperacional === "Inservível" && (
+              <div>
+                <CyberLabel htmlFor="classificacaoInservivel">Classificação do Inservível</CyberLabel>
+                <CyberSelect id="classificacaoInservivel" value={formData.classificacaoInservivel}
+                  onChange={(e) => handleChange("classificacaoInservivel", e.target.value)}>
+                  <option value="">Selecione</option>
+                  {CLASSIFICACOES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </CyberSelect>
+              </div>
+            )}
+
+            <div>
+              <CyberLabel htmlFor="statusLocalizacao">Status de Localização</CyberLabel>
+              <CyberSelect id="statusLocalizacao" value={formData.statusLocalizacao}
+                onChange={(e) => handleChange("statusLocalizacao", e.target.value)}>
+                <option value="Localizado">Localizado</option>
+                <option value="Não Localizado">Não Localizado</option>
+              </CyberSelect>
+            </div>
+
+            <div className="flex flex-col gap-4 pt-1">
+              <Toggle
+                checked={formData.condicoesUso}
+                onChange={(v) => handleChange("condicoesUso", v)}
+                label={formData.condicoesUso ? "Em condições de uso" : "Sem condições de uso"}
+              />
+              <Toggle
+                checked={formData.descricaoCompleta}
+                onChange={(v) => handleChange("descricaoCompleta", v)}
+                label={formData.descricaoCompleta ? "Descrição completa" : "Descrição incompleta"}
+              />
             </div>
           </div>
         </div>
 
-        {/* Toggle de rede */}
+        {/* ── Ativo de Rede ─────────────────────────────────────────────────── */}
         <div className="rounded-lg p-5" style={{ background: "#0f0f1a", border: "1px solid #1a3a4a" }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -540,16 +665,17 @@ export default function NewAssetPage() {
           )}
         </div>
 
-        {/* Status e Observações */}
+        {/* ── Situação (TI) e Observações ───────────────────────────────────── */}
         <div className="rounded-lg p-5" style={{ background: "#0f0f1a", border: "1px solid #1a3a4a" }}>
-          <SectionTitle>Status e Observações</SectionTitle>
+          <SectionTitle>Situação (TI) e Observações</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <CyberLabel htmlFor="situacao">Situação *</CyberLabel>
+              <CyberLabel htmlFor="situacao">Situação Interna de TI *</CyberLabel>
               <CyberSelect id="situacao" value={formData.situacao}
                 onChange={(e) => handleChange("situacao", e.target.value)} required>
-                {SITUACOES.map((s) => <option key={s} value={s}>{s}</option>)}
+                {SITUACOES_TI.map((s) => <option key={s} value={s}>{s}</option>)}
               </CyberSelect>
+              <p className="text-xs mt-1" style={{ color: "#374151" }}>Campo operacional interno — diferente da "Situação Operacional" da planilha NAV</p>
             </div>
           </div>
           <div className="mt-4">
@@ -572,6 +698,7 @@ export default function NewAssetPage() {
             ✓ Ativo criado com sucesso! Formulário resetado para novo cadastro.
           </div>
         )}
+
         <div className="flex justify-end gap-3 pb-6">
           <Link href="/dashboard/assets"
             className="flex items-center gap-2 px-5 py-2.5 rounded font-mono text-sm font-semibold"
