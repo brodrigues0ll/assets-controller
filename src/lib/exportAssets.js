@@ -1,3 +1,5 @@
+import * as XLSX from 'xlsx';
+
 /**
  * Exporta ativos para CSV com todos os campos patrimoniais e operacionais.
  * Nomenclatura alinhada com a planilha NAV Brasil para evitar confusão.
@@ -130,4 +132,160 @@ export function exportAssetsToCSV(assets, filename = 'ativos') {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+/**
+ * Gera arquivo .xlsx no formato exato da planilha NAV Brasil (34 colunas + abas auxiliares).
+ * Campos calculados (depreciação, valor líquido) são preenchidos automaticamente.
+ */
+export function exportarFormatoNAV(assets, dnbCode = '', filename = 'nav-brasil') {
+  if (!assets || assets.length === 0) {
+    alert('Nenhum ativo para exportar');
+    return;
+  }
+
+  const boolStr = (v) => v === true ? 'Sim' : v === false ? 'Não' : '';
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '';
+  const fmtNum = (n) => n != null ? Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '';
+
+  function calcDeprec(asset) {
+    const { valor, valorResidual, vidaUtilMeses, dataServico, dataAquisicao } = asset;
+    if (!valor || !vidaUtilMeses || vidaUtilMeses <= 0) return {};
+    const residual = valorResidual || 0;
+    const depMensal = (valor - residual) / vidaUtilMeses;
+    const dataBase = dataServico || dataAquisicao;
+    if (!dataBase) return { depMensal };
+    const inicio = new Date(dataBase);
+    const hoje = new Date();
+    const meses = Math.max(0, (hoje.getFullYear() - inicio.getFullYear()) * 12 + (hoje.getMonth() - inicio.getMonth()));
+    const deprecAcum = Math.min(valor - residual, depMensal * meses);
+    const valorLiquido = Math.max(residual, valor - deprecAcum);
+    const vidaRestante = Math.max(0, vidaUtilMeses - meses);
+    return { depMensal, deprecAcum, valorLiquido, vidaRestante };
+  }
+
+  const headers = [
+    'Entidade',
+    'Aeroporto',
+    'Proprietário',
+    'Conta Nav',
+    'Contabilizado',
+    'Categoria',
+    'Ativo nº',
+    'Denominação do imobilizado',
+    'Data de incorporação',
+    'Data de serviço',
+    'Vida útil',
+    'Vida útil restante',
+    'Depreciação mensal',
+    'Valor do Bem',
+    'Valor Líquido',
+    'Depreciação Acumulada',
+    'Valor Residual',
+    'Centro de Custo',
+    'Detentor - Matrícula',
+    'Detentor',
+    'Localização',
+    'Número de série',
+    'Fabricante',
+    'Modelo',
+    'Plaqueta',
+    'Situação do Bem',
+    'Situação',
+    'Status',
+    'Condições de Uso',
+    'Classificação',
+    'Descrição',
+    'Plaqueta NAV',
+    'Localização atualizada',
+    'Observação',
+  ];
+
+  const mainRows = assets.map((a) => {
+    const d = calcDeprec(a);
+    return [
+      '047',
+      a.dnb?.code || dnbCode,
+      a.proprietario || '',
+      a.contaNav || '',
+      boolStr(a.contabilizado),
+      a.contaNav || '',
+      a.ativoSAP || '',
+      a.tipoEquipamento || '',
+      fmtDate(a.dataAquisicao),
+      fmtDate(a.dataServico),
+      a.vidaUtilMeses != null ? String(a.vidaUtilMeses) : '',
+      d.vidaRestante != null ? String(d.vidaRestante) : '',
+      d.depMensal != null ? fmtNum(d.depMensal) : '',
+      fmtNum(a.valor),
+      d.valorLiquido != null ? fmtNum(d.valorLiquido) : '',
+      d.deprecAcum != null ? fmtNum(d.deprecAcum) : '',
+      fmtNum(a.valorResidual),
+      a.centroCusto || '',
+      a.detentorMatricula || '',
+      a.detentorNome || '',
+      a.setor?.nome || a.localizacaoSetor || '',
+      a.numeroSerie || '',
+      a.fabricante || '',
+      a.subtipo || '',
+      a.patrimonio || '',
+      a.situacaoBem || '',
+      a.situacaoOperacional || '',
+      a.statusLocalizacao || '',
+      boolStr(a.condicoesUso),
+      a.classificacaoInservivel || '',
+      a.descricaoCompleta ? 'Completa' : '',
+      a.plaquetaNAV || '',
+      a.setor?.codigoOficial || '',
+      a.observacoes || '',
+    ];
+  });
+
+  const wb = XLSX.utils.book_new();
+
+  // Aba I — Dados principais
+  const wsMain = XLSX.utils.aoa_to_sheet([headers, ...mainRows]);
+  wsMain['!cols'] = headers.map(() => ({ wch: 18 }));
+  XLSX.utils.book_append_sheet(wb, wsMain, 'I - Inventário');
+
+  // Aba III — Não Localizados
+  const naoLoc = assets.filter(a => a.statusLocalizacao === 'Não Localizado');
+  const wsNaoLoc = XLSX.utils.aoa_to_sheet([
+    ['Plaqueta', 'Denominação', 'Detentor', 'Matrícula', 'DNB', 'Setor', 'Sit. Operacional', 'Atualizado em'],
+    ...naoLoc.map(a => [
+      a.patrimonio, a.tipoEquipamento, a.detentorNome, a.detentorMatricula,
+      a.dnb?.code, a.setor?.nome || a.localizacaoSetor, a.situacaoOperacional,
+      fmtDate(a.updatedAt),
+    ]),
+  ]);
+  XLSX.utils.book_append_sheet(wb, wsNaoLoc, 'III - Não Localizados');
+
+  // Aba IV — Descrição Incompleta
+  const incompletos = assets.filter(a => a.descricaoCompleta === false);
+  const wsIncompletos = XLSX.utils.aoa_to_sheet([
+    ['Plaqueta', 'Denominação', 'Modelo', 'Fabricante', 'Nº Série', 'Detentor', 'DNB'],
+    ...incompletos.map(a => [
+      a.patrimonio, a.tipoEquipamento, a.subtipo, a.fabricante,
+      a.numeroSerie, a.detentorNome, a.dnb?.code,
+    ]),
+  ]);
+  XLSX.utils.book_append_sheet(wb, wsIncompletos, 'IV - Descrição Incompleta');
+
+  // Aba V — Inservíveis / Alienação
+  const inservíveis = assets.filter(a => a.situacaoOperacional === 'Inservível');
+  const wsAlienacao = XLSX.utils.aoa_to_sheet([
+    ['Plaqueta', 'Denominação', 'Classificação', 'Valor Original', 'Valor Líquido', 'Detentor', 'DNB', 'Setor'],
+    ...inservíveis.map(a => {
+      const d = calcDeprec(a);
+      return [
+        a.patrimonio, a.tipoEquipamento, a.classificacaoInservivel,
+        fmtNum(a.valor), d.valorLiquido != null ? fmtNum(d.valorLiquido) : '',
+        a.detentorNome, a.dnb?.code, a.setor?.nome || a.localizacaoSetor,
+      ];
+    }),
+  ]);
+  XLSX.utils.book_append_sheet(wb, wsAlienacao, 'V - Alienação');
+
+  const timestamp = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${filename}_${timestamp}.xlsx`);
 }

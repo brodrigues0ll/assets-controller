@@ -22,6 +22,7 @@ import {
   MapPinOff,
   Trash2,
   FileWarning,
+  FileUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,7 @@ export function Sidebar({ user }) {
     { name: "Não Localizados", href: "/dashboard/nao-localizados", icon: MapPinOff, count: counts.naoLocalizados, color: "#ff2d55" },
     { name: "Alienação", href: "/dashboard/alienacao", icon: Trash2, count: counts.inservíveis, color: "#fbbf24" },
     { name: "Desc. Incompleta", href: "/dashboard/descricao-incompleta", icon: FileWarning, count: counts.descricaoIncompleta, color: "#fbbf24" },
+    { name: "Importar Planilha", href: "/dashboard/importar", icon: FileUp, count: 0, color: "#a855f7" },
   ];
 
   return (
