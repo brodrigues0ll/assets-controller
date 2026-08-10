@@ -21,7 +21,9 @@ export async function GET(request) {
 
   const asset = await Asset.findOne({ patrimonio: patrimonio.trim() })
     .populate('dnb', 'code name')
-    .select('_id patrimonio tipoEquipamento subtipo fabricante situacao localizacaoSetor usuarioResponsavel dnb imagemUrl')
+    .populate('categoria', 'nome')
+    .populate('fabricante', 'nome')
+    .populate('localizacaoSetor', 'nome')
     .lean();
 
   if (!asset) {

@@ -42,7 +42,10 @@ async function getDashboardStats(userRole, userDnb) {
     User.countDocuments({ active: true }),
     Asset.aggregate([
       { $match: assetQuery },
-      { $group: { _id: '$tipoEquipamento', count: { $sum: 1 } } },
+      { $group: { _id: '$categoria', count: { $sum: 1 } } },
+      { $lookup: { from: 'categorias', localField: '_id', foreignField: '_id', as: 'cat' } },
+      { $addFields: { nome: { $ifNull: [{ $arrayElemAt: ['$cat.nome', 0] }, 'Sem Categoria'] } } },
+      { $project: { _id: '$nome', count: 1 } },
       { $sort: { count: -1 } },
       { $limit: 5 }
     ]),
@@ -336,7 +339,7 @@ export default async function DashboardPage() {
                         {asset.patrimonio}
                       </p>
                       <p className="text-xs" style={{ color: '#64748b' }}>
-                        {asset.tipoEquipamento} — {asset.subtipo}
+                        {asset.categoria?.nome || asset.tipoEquipamento} — {asset.subtipo}
                       </p>
                     </div>
                   </div>

@@ -5,10 +5,27 @@ import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import Asset from '@/lib/models/Asset';
 import AuditLog from '@/lib/models/AuditLog';
-import { canEditAsset, canViewAllDNBs, canCreateAssetInDNB } from '@/lib/permissions';
+import { canEditAsset, canCreateAssetInDNB } from '@/lib/permissions';
 import { revalidatePath } from 'next/cache';
 
-export async function getAssets(filters = {}) {
+export async function searchAssetsByPatrimonio(query) {
+  const session = await getServerSession(authOptions);
+  if (!session) throw new Error('Não autenticado');
+  if (!query || query.length < 2) return [];
+
+  await connectDB();
+
+  const re = { $regex: query, $options: 'i' };
+  const assets = await Asset.find({ $or: [{ patrimonio: re }, { ativoSAP: re }] })
+    .select('_id patrimonio ativoSAP tipoEquipamento subtipo categoria')
+    .populate('categoria', 'nome')
+    .limit(10)
+    .lean();
+
+  return JSON.parse(JSON.stringify(assets));
+}
+
+export async function getAssets({ page = 1, limit = 25, search = '', dnb: dnbFilter = '', situacao: situacaoFilter = '', situacaoOperacional: situacaoOpFilter = '', statusLocalizacao: statusLocFilter = '', categoria: categoriaFilter = '' } = {}) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -21,37 +38,52 @@ export async function getAssets(filters = {}) {
 
   // Técnico só vê ativos de suas DNBs
   if (session.user.role === 'tecnico') {
-    // Suporta múltiplas DNBs (novo) e DNB única (legado)
     const userDnbs = session.user.dnbs || (session.user.dnb ? [session.user.dnb] : []);
-
     if (userDnbs.length > 0) {
-      // Extrai os IDs das DNBs
-      const dnbIds = userDnbs.map(dnb => {
-        if (typeof dnb === 'object') {
-          return dnb.id || dnb._id;
-        }
-        return dnb;
-      });
+      const dnbIds = userDnbs.map(dnb => (typeof dnb === 'object' ? dnb.id || dnb._id : dnb));
       query.dnb = { $in: dnbIds };
     } else {
-      // Se técnico não tem DNBs, não retornar nada
       query.dnb = null;
     }
   }
 
-  // Aplicar filtros adicionais
-  if (filters.dnb) query.dnb = filters.dnb;
-  if (filters.tipoEquipamento) query.tipoEquipamento = filters.tipoEquipamento;
-  if (filters.situacao) query.situacao = filters.situacao;
+  // Filtros server-side
+  if (dnbFilter) query.dnb = dnbFilter;
+  if (situacaoFilter) query.situacao = situacaoFilter;
+  if (situacaoOpFilter) query.situacaoOperacional = situacaoOpFilter;
+  if (statusLocFilter) query.statusLocalizacao = statusLocFilter;
+  if (categoriaFilter) query.categoria = categoriaFilter;
+
+  // Busca por texto (regex nos campos indexados)
+  if (search && search.length >= 2) {
+    const re = { $regex: search, $options: 'i' };
+    query.$or = [
+      { patrimonio: re },
+      { ativoSAP: re },
+      { tipoEquipamento: re },
+      { hostname: re },
+      { usuarioResponsavel: re },
+      { detentorNome: re },
+      { numeroSerie: re },
+    ];
+  }
+
+  const total = await Asset.countDocuments(query);
+  const totalPages = limit > 0 ? Math.max(1, Math.ceil(total / limit)) : 1;
+  const skip = limit > 0 ? (page - 1) * limit : 0;
 
   const assets = await Asset.find(query)
     .populate('dnb')
+    .populate('categoria', 'nome')
     .populate('cadastradoPor', 'name email')
     .populate('editadoPor', 'name email')
+    .populate({ path: 'setor', select: 'nome predio', populate: { path: 'predio', select: 'nome' } })
     .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit > 0 ? limit : 0)
     .lean();
 
-  return JSON.parse(JSON.stringify(assets));
+  return JSON.parse(JSON.stringify({ assets, total, totalPages, page }));
 }
 
 export async function getAssetById(id) {
@@ -65,8 +97,10 @@ export async function getAssetById(id) {
 
   const asset = await Asset.findById(id)
     .populate('dnb')
+    .populate('categoria', 'nome')
     .populate('cadastradoPor', 'name email')
     .populate('editadoPor', 'name email')
+    .populate({ path: 'setor', select: 'nome predio', populate: { path: 'predio', select: 'nome' } })
     .lean();
 
   if (!asset) {
@@ -116,8 +150,16 @@ export async function createAsset(data) {
     throw new Error('Patrimônio já cadastrado');
   }
 
+  // Resolver patrimônio → ObjectId para vinculadoA
+  const payload = { ...data };
+  if (payload.vinculadoA && !/^[0-9a-fA-F]{24}$/.test(payload.vinculadoA)) {
+    const pai = await Asset.findOne({ patrimonio: payload.vinculadoA });
+    if (!pai) throw new Error(`Ativo pai com patrimônio "${payload.vinculadoA}" não encontrado`);
+    payload.vinculadoA = pai._id;
+  }
+
   const asset = await Asset.create({
-    ...data,
+    ...payload,
     cadastradoPor: session.user.id,
   });
 
@@ -165,7 +207,15 @@ export async function updateAsset(id, data) {
 
   const oldData = asset.toObject();
 
-  Object.assign(asset, data);
+  // Resolver patrimônio → ObjectId para vinculadoA
+  const payload = { ...data };
+  if (payload.vinculadoA && !/^[0-9a-fA-F]{24}$/.test(payload.vinculadoA)) {
+    const pai = await Asset.findOne({ patrimonio: payload.vinculadoA });
+    if (!pai) throw new Error(`Ativo pai com patrimônio "${payload.vinculadoA}" não encontrado`);
+    payload.vinculadoA = pai._id;
+  }
+
+  Object.assign(asset, payload);
   asset.editadoPor = session.user.id;
   await asset.save();
 

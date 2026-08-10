@@ -32,6 +32,17 @@ export default function AuditPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterAction, setFilterAction] = useState("");
   const [filterEntity, setFilterEntity] = useState("");
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
+
+  function handleSort(col) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  }
+
+  function getVal(obj, path) {
+    return path.split('.').reduce((o, k) => o?.[k], obj) ?? '';
+  }
 
   useEffect(() => {
     loadLogs();
@@ -72,7 +83,7 @@ export default function AuditPage() {
     }
   }
 
-  const filteredLogs = logs.filter((log) => {
+  const filteredAndSortedLogs = logs.filter((log) => {
     const matchSearch =
       !searchTerm ||
       log.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -82,6 +93,13 @@ export default function AuditPage() {
     const matchEntity = !filterEntity || log.entityType === filterEntity;
 
     return matchSearch && matchAction && matchEntity;
+  });
+
+  const filteredLogs = [...filteredAndSortedLogs].sort((a, b) => {
+    if (!sortCol) return 0;
+    const av = String(getVal(a, sortCol)).toLowerCase();
+    const bv = String(getVal(b, sortCol)).toLowerCase();
+    return sortDir === 'asc' ? av.localeCompare(bv, 'pt') : bv.localeCompare(av, 'pt');
   });
 
   const getActionBadge = (action) => {
@@ -243,12 +261,78 @@ export default function AuditPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data/Hora</TableHead>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Ação</TableHead>
-                  <TableHead>Entidade</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>DNB</TableHead>
+                  <TableHead
+                    onClick={() => handleSort('timestamp')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Data/Hora
+                      <span style={{ opacity: sortCol === 'timestamp' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'timestamp' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort('user.name')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Usuário
+                      <span style={{ opacity: sortCol === 'user.name' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'user.name' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort('action')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Ação
+                      <span style={{ opacity: sortCol === 'action' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'action' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort('entityType')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Entidade
+                      <span style={{ opacity: sortCol === 'entityType' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'entityType' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort('description')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Descrição
+                      <span style={{ opacity: sortCol === 'description' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'description' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort('dnb.code')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      DNB
+                      <span style={{ opacity: sortCol === 'dnb.code' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'dnb.code' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

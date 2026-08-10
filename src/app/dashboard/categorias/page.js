@@ -1,22 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getAllCategorias, createCategoria, updateCategoria, deleteCategoria } from "@/lib/actions/categorias";
 import { useSession } from "next-auth/react";
 import { Plus, Edit, Trash2, Tag, Wifi, Monitor, AlertTriangle, X, Check } from "lucide-react";
 
-function CategoriaDialog({ open, onClose, onSuccess, categoria }) {
+const DEFAULT_CATEGORIA_FORM = { nome: "", descricao: "", icone: "package", temRede: false, temSO: false, ativo: true };
+
+function CategoriaDialog({ open, onClose, onSuccess, onRefresh, categoria }) {
   const isEdit = !!categoria;
-  const [formData, setFormData] = useState({
-    nome: "",
-    descricao: "",
-    icone: "package",
-    temRede: false,
-    temSO: false,
-    ativo: true,
-  });
+  const formRef = useRef(null);
+  const saveAndNextRef = useRef(false);
+  const [formData, setFormData] = useState(DEFAULT_CATEGORIA_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
     if (categoria) {
@@ -36,6 +34,8 @@ function CategoriaDialog({ open, onClose, onSuccess, categoria }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    const isNext = saveAndNextRef.current;
+    saveAndNextRef.current = false;
     setError("");
     setSubmitting(true);
     try {
@@ -44,7 +44,14 @@ function CategoriaDialog({ open, onClose, onSuccess, categoria }) {
       } else {
         await createCategoria(formData);
       }
-      onSuccess();
+      if (isNext) {
+        setFormData(DEFAULT_CATEGORIA_FORM);
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 2000);
+        onRefresh?.();
+      } else {
+        onSuccess();
+      }
     } catch (err) {
       setError(err.message || "Erro ao salvar");
     } finally {
@@ -91,7 +98,7 @@ function CategoriaDialog({ open, onClose, onSuccess, categoria }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} ref={formRef} className="space-y-4">
           <div>
             <label className="block text-xs font-mono uppercase tracking-widest mb-2" style={{ color: "#64748b" }}>
               Nome *
@@ -196,27 +203,29 @@ function CategoriaDialog({ open, onClose, onSuccess, categoria }) {
             </label>
           )}
 
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="flex-1 h-10 rounded font-mono text-sm font-semibold transition-all"
-              style={{ background: "#141428", border: "1px solid #1a3a4a", color: "#64748b" }}
-            >
+          {savedFlash && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded text-sm" style={{ background: "#00ff8810", border: "1px solid #00ff8840", color: "#00ff88" }}>
+              ✓ Criado com sucesso!
+            </div>
+          )}
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={onClose} disabled={submitting}
+              className="h-10 px-4 rounded font-mono text-sm font-semibold"
+              style={{ background: "#141428", border: "1px solid #1a3a4a", color: "#64748b" }}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 h-10 rounded font-mono text-sm font-semibold transition-all"
-              style={{
-                background: submitting ? "#00d4ff60" : "#00d4ff",
-                color: "#0a0a0f",
-                cursor: submitting ? "not-allowed" : "pointer",
-              }}
-            >
-              {submitting ? "Salvando..." : isEdit ? "Atualizar" : "Criar"}
+            {!isEdit && (
+              <button type="button" disabled={submitting}
+                onClick={() => { saveAndNextRef.current = true; formRef.current?.requestSubmit(); }}
+                className="flex-1 h-10 rounded font-mono text-sm font-semibold"
+                style={{ background: "#141428", border: "1px solid #00d4ff40", color: "#00d4ff" }}>
+                + Próximo
+              </button>
+            )}
+            <button type="submit" disabled={submitting}
+              className="flex-1 h-10 rounded font-mono text-sm font-semibold"
+              style={{ background: submitting ? "#00d4ff60" : "#00d4ff", color: "#0a0a0f", cursor: submitting ? "not-allowed" : "pointer" }}>
+              {submitting ? "Salvando..." : isEdit ? "Atualizar" : "Salvar"}
             </button>
           </div>
         </form>
@@ -247,6 +256,13 @@ export default function CategoriasPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function refreshSilent() {
+    try {
+      const data = await getAllCategorias();
+      setCategorias(data);
+    } catch {}
   }
 
   function handleCreate() {
@@ -434,6 +450,7 @@ export default function CategoriasPage() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSuccess={() => { setDialogOpen(false); loadData(); }}
+        onRefresh={refreshSilent}
         categoria={selectedCategoria}
       />
     </div>

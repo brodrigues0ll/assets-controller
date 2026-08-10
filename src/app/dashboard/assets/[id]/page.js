@@ -128,6 +128,7 @@ export default async function AssetDetailPage({ params }) {
               <img
                 src={asset.imagemUrl}
                 alt={asset.patrimonio}
+                loading="lazy"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -142,7 +143,7 @@ export default async function AssetDetailPage({ params }) {
               {asset.patrimonio}
             </h1>
             <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
-              {asset.tipoEquipamento} — {asset.subtipo}
+              {asset.categoria?.nome || asset.tipoEquipamento} — {asset.subtipo}
             </p>
             <div className="mt-2">
               <span
@@ -173,7 +174,7 @@ export default async function AssetDetailPage({ params }) {
           </Link>
           {canEdit && (
             <Link
-              href="/dashboard/assets"
+              href={`/dashboard/assets/${asset._id}/edit`}
               className="flex items-center gap-2 px-4 py-2 rounded text-sm font-mono font-semibold transition-all"
               style={{
                 background: '#00d4ff',
@@ -192,7 +193,7 @@ export default async function AssetDetailPage({ params }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Section title="Informações Básicas" icon={Package}>
           <InfoRow label="Patrimônio" value={asset.patrimonio} />
-          <InfoRow label="Tipo" value={asset.tipoEquipamento} />
+          <InfoRow label="Categoria / Tipo" value={asset.categoria?.nome || asset.tipoEquipamento} />
           <InfoRow label="Subtipo / Modelo" value={asset.subtipo} />
           <InfoRow label="Fabricante" value={asset.fabricante} />
           <InfoRow label="Quantidade" value={asset.quantidade?.toString()} />
@@ -204,7 +205,8 @@ export default async function AssetDetailPage({ params }) {
             label="DNB"
             value={asset.dnb ? `${asset.dnb.code} — ${asset.dnb.name}` : null}
           />
-          <InfoRow label="Setor" value={asset.localizacaoSetor} />
+          <InfoRow label="Prédio" value={asset.setor?.predio?.nome || null} />
+          <InfoRow label="Setor" value={asset.setor?.nome || asset.localizacaoSetor || null} />
           <InfoRow label="Responsável" value={asset.usuarioResponsavel} />
           <InfoRow label="Função / Perfil" value={asset.funcaoPerfil} />
         </Section>

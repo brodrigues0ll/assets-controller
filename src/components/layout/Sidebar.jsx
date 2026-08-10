@@ -15,6 +15,8 @@ import {
   Shield,
   ChevronRight,
   Cpu,
+  Factory,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,24 @@ const navigation = [
     name: "Categorias",
     href: "/dashboard/categorias",
     icon: Tag,
+    roles: ["gestor", "administrador"],
+  },
+  {
+    name: "Fabricantes",
+    href: "/dashboard/fabricantes",
+    icon: Factory,
+    roles: ["gestor", "administrador"],
+  },
+  {
+    name: "Prédios",
+    href: "/dashboard/predios",
+    icon: Building2,
+    roles: ["gestor", "administrador"],
+  },
+  {
+    name: "Setores",
+    href: "/dashboard/setores",
+    icon: MapPin,
     roles: ["gestor", "administrador"],
   },
   {

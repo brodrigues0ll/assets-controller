@@ -23,11 +23,6 @@ const SITUACOES = [
   "Descartado",
 ];
 
-const TIPOS_EQUIPAMENTO = [
-  "Computador", "Notebook", "Monitor", "Switch", "Roteador",
-  "Impressora", "Servidor", "Telefone", "Câmera", "Mobiliário", "Outro",
-];
-
 const inputClass = "w-full h-10 px-3 rounded text-sm font-mono transition-all duration-150";
 const inputStyle = {
   background: "#141428",
@@ -112,13 +107,13 @@ function CyberLabel({ htmlFor, children }) {
   );
 }
 
-export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categorias = [] }) {
+export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categorias = [], fabricantes = [], setores = [] }) {
   const { data: session } = useSession();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
-    tipoEquipamento: "",
+    categoria: "",
     subtipo: "",
     fabricante: "",
     usuarioResponsavel: "",
@@ -136,14 +131,13 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categor
     quantidade: "1",
     situacao: "Em estoque",
     observacoes: "",
-    categoria: "",
     vinculadoA: "",
   });
 
   useEffect(() => {
     if (asset) {
       setFormData({
-        tipoEquipamento: asset.tipoEquipamento || "",
+        categoria: asset.categoria?._id || asset.categoria || "",
         subtipo: asset.subtipo || "",
         fabricante: asset.fabricante || "",
         usuarioResponsavel: asset.usuarioResponsavel || "",
@@ -161,7 +155,6 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categor
         quantidade: asset.quantidade?.toString() || "1",
         situacao: asset.situacao || "Em estoque",
         observacoes: asset.observacoes || "",
-        categoria: asset.categoria?._id || asset.categoria || "",
         vinculadoA: asset.vinculadoA?._id || asset.vinculadoA || "",
       });
     }
@@ -173,7 +166,6 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categor
     setSubmitting(true);
     try {
       const payload = { ...formData };
-      if (!payload.categoria) delete payload.categoria;
       if (!payload.vinculadoA) delete payload.vinculadoA;
       await updateAsset(asset._id, payload);
       onSuccess();
@@ -210,16 +202,16 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categor
               <SectionTitle>Informações Básicas</SectionTitle>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <CyberLabel htmlFor="tipoEquipamento">Tipo de Equipamento *</CyberLabel>
+                  <CyberLabel htmlFor="categoria">Categoria / Tipo *</CyberLabel>
                   <CyberSelect
-                    id="tipoEquipamento"
-                    value={formData.tipoEquipamento}
-                    onChange={(e) => handleChange("tipoEquipamento", e.target.value)}
+                    id="categoria"
+                    value={formData.categoria}
+                    onChange={(e) => handleChange("categoria", e.target.value)}
                     required
                   >
                     <option value="">Selecione</option>
-                    {TIPOS_EQUIPAMENTO.map((t) => (
-                      <option key={t} value={t}>{t}</option>
+                    {categorias.map((cat) => (
+                      <option key={cat._id} value={cat._id}>{cat.nome}</option>
                     ))}
                   </CyberSelect>
                 </div>
@@ -236,14 +228,17 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categor
                 </div>
 
                 <div>
-                  <CyberLabel htmlFor="fabricante">Fabricante *</CyberLabel>
-                  <CyberInput
+                  <CyberLabel htmlFor="fabricante">Fabricante</CyberLabel>
+                  <CyberSelect
                     id="fabricante"
-                    placeholder="Ex: Dell, HP, Cisco"
                     value={formData.fabricante}
                     onChange={(e) => handleChange("fabricante", e.target.value)}
-                    required
-                  />
+                  >
+                    <option value="">Selecione</option>
+                    {fabricantes.map((fab) => (
+                      <option key={fab._id} value={fab.nome}>{fab.nome}</option>
+                    ))}
+                  </CyberSelect>
                 </div>
 
                 <div>
@@ -257,27 +252,11 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categor
                   />
                 </div>
 
-                {categorias.length > 0 && (
-                  <div>
-                    <CyberLabel htmlFor="categoria">Categoria</CyberLabel>
-                    <CyberSelect
-                      id="categoria"
-                      value={formData.categoria}
-                      onChange={(e) => handleChange("categoria", e.target.value)}
-                    >
-                      <option value="">Sem categoria</option>
-                      {categorias.map((cat) => (
-                        <option key={cat._id} value={cat._id}>{cat.nome}</option>
-                      ))}
-                    </CyberSelect>
-                  </div>
-                )}
-
                 <div>
-                  <CyberLabel htmlFor="vinculadoA">Vinculado a (ID do Ativo)</CyberLabel>
+                  <CyberLabel htmlFor="vinculadoA">Vinculado a (Patrimônio do Ativo Pai)</CyberLabel>
                   <CyberInput
                     id="vinculadoA"
-                    placeholder="ID do ativo pai (opcional)"
+                    placeholder="Patrimônio do ativo pai (opcional)"
                     value={formData.vinculadoA}
                     onChange={(e) => handleChange("vinculadoA", e.target.value)}
                   />
@@ -307,14 +286,17 @@ export function EditAssetDialog({ open, onClose, onSuccess, asset, dnbs, categor
                 </div>
 
                 <div>
-                  <CyberLabel htmlFor="localizacaoSetor">Localização / Setor *</CyberLabel>
-                  <CyberInput
+                  <CyberLabel htmlFor="localizacaoSetor">Setor</CyberLabel>
+                  <CyberSelect
                     id="localizacaoSetor"
-                    placeholder="Ex: OPR, ADM, TI"
                     value={formData.localizacaoSetor}
                     onChange={(e) => handleChange("localizacaoSetor", e.target.value)}
-                    required
-                  />
+                  >
+                    <option value="">Selecione</option>
+                    {setores.map((setor) => (
+                      <option key={setor._id} value={setor.nome}>{setor.nome}</option>
+                    ))}
+                  </CyberSelect>
                 </div>
 
                 <div>

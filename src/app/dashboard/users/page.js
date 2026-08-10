@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Plus, Pencil, Trash2, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,6 +63,27 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const formRef = useRef(null);
+  const saveAndNextRef = useRef(false);
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
+
+  function handleSort(col) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  }
+
+  function getVal(obj, path) {
+    return path.split('.').reduce((o, k) => o?.[k], obj) ?? '';
+  }
+
+  const sortedUsers = [...users].sort((a, b) => {
+    if (!sortCol) return 0;
+    const av = String(getVal(a, sortCol)).toLowerCase();
+    const bv = String(getVal(b, sortCol)).toLowerCase();
+    return sortDir === 'asc' ? av.localeCompare(bv, 'pt') : bv.localeCompare(av, 'pt');
+  });
 
   useEffect(() => {
     loadData();
@@ -157,8 +178,17 @@ export default function UsersPage() {
         await createUser(data);
       }
 
-      setDialogOpen(false);
-      await loadData();
+      if (saveAndNextRef.current) {
+        saveAndNextRef.current = false;
+        setFormData({ name: '', email: '', password: '', role: 'tecnico', dnbs: [] });
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 2000);
+        await loadData();
+      } else {
+        saveAndNextRef.current = false;
+        setDialogOpen(false);
+        await loadData();
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -227,15 +257,48 @@ export default function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Papel</TableHead>
+                  <TableHead
+                    onClick={() => handleSort('name')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Nome
+                      <span style={{ opacity: sortCol === 'name' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'name' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort('email')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Email
+                      <span style={{ opacity: sortCol === 'email' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'email' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort('role')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Papel
+                      <span style={{ opacity: sortCol === 'role' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'role' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
                   <TableHead>DNB</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
+                {sortedUsers.map((user) => (
                   <TableRow key={user._id}>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
@@ -296,7 +359,7 @@ export default function UsersPage() {
       {/* Dialog de Criar/Editar */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} ref={formRef}>
             <DialogHeader>
               <DialogTitle>{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
               <DialogDescription>
@@ -417,12 +480,20 @@ export default function UsersPage() {
               )}
             </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancelar
-              </Button>
+            {savedFlash && (
+              <div className="text-sm text-green-700 bg-green-50 p-3 rounded-md mb-4">✓ Usuário criado com sucesso!</div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              {!editingUser && (
+                <Button type="button" variant="outline" disabled={submitting}
+                  onClick={() => { saveAndNextRef.current = true; formRef.current?.requestSubmit(); }}>
+                  + Próximo
+                </Button>
+              )}
               <Button type="submit" disabled={submitting}>
-                {submitting ? 'Salvando...' : editingUser ? 'Atualizar' : 'Criar'}
+                {submitting ? 'Salvando...' : editingUser ? 'Atualizar' : 'Salvar'}
               </Button>
             </DialogFooter>
           </form>

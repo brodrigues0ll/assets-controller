@@ -116,7 +116,7 @@ export default function QuickEditPage() {
         </h1>
         {asset && (
           <p className="text-sm mt-1 font-mono" style={{ color: "#64748b" }}>
-            {asset.patrimonio} — {asset.tipoEquipamento}
+            {asset.patrimonio} — {asset.categoria?.nome || asset.tipoEquipamento}
           </p>
         )}
       </div>

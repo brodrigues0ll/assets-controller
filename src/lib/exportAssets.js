@@ -17,7 +17,8 @@ export function exportAssetsToCSV(assets, filename = 'ativos') {
     'Fabricante',
     'Usuário Responsável',
     'Função/Perfil',
-    'Localização/Setor',
+    'Prédio',
+    'Setor',
     'DNB',
     'Número de Série',
     'Hostname',
@@ -37,12 +38,13 @@ export function exportAssetsToCSV(assets, filename = 'ativos') {
   const rows = assets.map((asset) => {
     return [
       asset.patrimonio || '',
-      asset.tipoEquipamento || '',
+      asset.categoria?.nome || asset.tipoEquipamento || '',
       asset.subtipo || '',
       asset.fabricante || '',
       asset.usuarioResponsavel || '',
       asset.funcaoPerfil || '',
-      asset.localizacaoSetor || '',
+      asset.setor?.predio?.nome || '',
+      asset.setor?.nome || asset.localizacaoSetor || '',
       asset.dnb?.code || '',
       asset.numeroSerie || '',
       asset.hostname || '',
@@ -79,32 +81,6 @@ export function exportAssetsToCSV(assets, filename = 'ativos') {
   const timestamp = new Date().toISOString().split('T')[0];
   link.setAttribute('href', url);
   link.setAttribute('download', `${filename}_${timestamp}.csv`);
-  link.style.visibility = 'hidden';
-
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-/**
- * Exporta ativos para JSON
- * @param {Array} assets - Array de ativos a serem exportados
- * @param {String} filename - Nome do arquivo (sem extensão)
- */
-export function exportAssetsToJSON(assets, filename = 'ativos') {
-  if (!assets || assets.length === 0) {
-    alert('Nenhum ativo para exportar');
-    return;
-  }
-
-  const jsonContent = JSON.stringify(assets, null, 2);
-  const blob = new Blob([jsonContent], { type: 'application/json' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-
-  const timestamp = new Date().toISOString().split('T')[0];
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}_${timestamp}.json`);
   link.style.visibility = 'hidden';
 
   document.body.appendChild(link);

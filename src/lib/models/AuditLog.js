@@ -14,7 +14,7 @@ const AuditLogSchema = new mongoose.Schema({
   entityType: {
     type: String,
     required: true,
-    enum: ['asset', 'user', 'dnb']
+    enum: ['asset', 'user', 'dnb', 'fabricante', 'setor', 'categoria', 'predio']
   },
   entityId: {
     type: mongoose.Schema.Types.ObjectId,

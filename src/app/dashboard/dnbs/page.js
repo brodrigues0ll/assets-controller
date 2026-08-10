@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +39,27 @@ export default function DNBsPage() {
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const formRef = useRef(null);
+  const saveAndNextRef = useRef(false);
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
+
+  function handleSort(col) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  }
+
+  function getVal(obj, path) {
+    return path.split('.').reduce((o, k) => o?.[k], obj) ?? '';
+  }
+
+  const sortedDnbs = [...dnbs].sort((a, b) => {
+    if (!sortCol) return 0;
+    const av = String(getVal(a, sortCol)).toLowerCase();
+    const bv = String(getVal(b, sortCol)).toLowerCase();
+    return sortDir === 'asc' ? av.localeCompare(bv, 'pt') : bv.localeCompare(av, 'pt');
+  });
 
   useEffect(() => {
     loadDNBs();
@@ -93,8 +114,17 @@ export default function DNBsPage() {
         await createDNB(data);
       }
 
-      setDialogOpen(false);
-      await loadDNBs();
+      if (saveAndNextRef.current) {
+        saveAndNextRef.current = false;
+        setFormData({ name: '', code: '', description: '', setores: '' });
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 2000);
+        await loadDNBs();
+      } else {
+        saveAndNextRef.current = false;
+        setDialogOpen(false);
+        await loadDNBs();
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -147,15 +177,48 @@ export default function DNBsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Nome</TableHead>
+                  <TableHead
+                    onClick={() => handleSort('code')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Código
+                      <span style={{ opacity: sortCol === 'code' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'code' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort('name')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Nome
+                      <span style={{ opacity: sortCol === 'name' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'name' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
                   <TableHead>Setores</TableHead>
-                  <TableHead>Descrição</TableHead>
+                  <TableHead
+                    onClick={() => handleSort('description')}
+                    className="cursor-pointer select-none"
+                    style={{ userSelect: 'none' }}
+                  >
+                    <span className="flex items-center gap-1">
+                      Descrição
+                      <span style={{ opacity: sortCol === 'description' ? 1 : 0.25, fontSize: '10px' }}>
+                        {sortCol === 'description' && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </span>
+                  </TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dnbs.map((dnb) => (
+                {sortedDnbs.map((dnb) => (
                   <TableRow key={dnb._id}>
                     <TableCell className="font-mono font-semibold">{dnb.code}</TableCell>
                     <TableCell className="font-medium">{dnb.name}</TableCell>
@@ -198,7 +261,7 @@ export default function DNBsPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} ref={formRef}>
             <DialogHeader>
               <DialogTitle>{editingDNB ? 'Editar DNB' : 'Nova DNB'}</DialogTitle>
               <DialogDescription>
@@ -260,12 +323,20 @@ export default function DNBsPage() {
               )}
             </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancelar
-              </Button>
+            {savedFlash && (
+              <div className="text-sm text-green-700 bg-green-50 p-3 rounded-md mb-4">✓ DNB criada com sucesso!</div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              {!editingDNB && (
+                <Button type="button" variant="outline" disabled={submitting}
+                  onClick={() => { saveAndNextRef.current = true; formRef.current?.requestSubmit(); }}>
+                  + Próximo
+                </Button>
+              )}
               <Button type="submit" disabled={submitting}>
-                {submitting ? 'Salvando...' : editingDNB ? 'Atualizar' : 'Criar'}
+                {submitting ? 'Salvando...' : editingDNB ? 'Atualizar' : 'Salvar'}
               </Button>
             </DialogFooter>
           </form>
