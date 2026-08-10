@@ -25,7 +25,25 @@ export async function searchAssetsByPatrimonio(query) {
   return JSON.parse(JSON.stringify(assets));
 }
 
-export async function getAssets({ page = 1, limit = 25, search = '', dnb: dnbFilter = '', situacao: situacaoFilter = '', situacaoOperacional: situacaoOpFilter = '', statusLocalizacao: statusLocFilter = '', categoria: categoriaFilter = '' } = {}) {
+export async function getAssetCounts() {
+  const session = await getServerSession(authOptions);
+  if (!session) throw new Error('Não autenticado');
+  await connectDB();
+
+  const base = session.user.role === 'tecnico'
+    ? { dnb: { $in: (session.user.dnbs || (session.user.dnb ? [session.user.dnb] : [])).map(d => typeof d === 'object' ? d.id || d._id : d) } }
+    : {};
+
+  const [naoLocalizados, inservíveis, descricaoIncompleta] = await Promise.all([
+    Asset.countDocuments({ ...base, statusLocalizacao: 'Não Localizado' }),
+    Asset.countDocuments({ ...base, situacaoOperacional: 'Inservível' }),
+    Asset.countDocuments({ ...base, descricaoCompleta: false }),
+  ]);
+
+  return JSON.parse(JSON.stringify({ naoLocalizados, inservíveis, descricaoIncompleta }));
+}
+
+export async function getAssets({ page = 1, limit = 25, search = '', dnb: dnbFilter = '', situacao: situacaoFilter = '', situacaoOperacional: situacaoOpFilter = '', statusLocalizacao: statusLocFilter = '', descricaoCompleta: descricaoFilter = '', categoria: categoriaFilter = '' } = {}) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -52,6 +70,7 @@ export async function getAssets({ page = 1, limit = 25, search = '', dnb: dnbFil
   if (situacaoFilter) query.situacao = situacaoFilter;
   if (situacaoOpFilter) query.situacaoOperacional = situacaoOpFilter;
   if (statusLocFilter) query.statusLocalizacao = statusLocFilter;
+  if (descricaoFilter === 'false') query.descricaoCompleta = false;
   if (categoriaFilter) query.categoria = categoriaFilter;
 
   // Busca por texto (regex nos campos indexados)

@@ -5,7 +5,8 @@ import connectDB from '@/lib/mongodb';
 import Asset from '@/lib/models/Asset';
 import DNB from '@/lib/models/DNB';
 import User from '@/lib/models/User';
-import { Package, MapPin, Users, Wrench, TrendingUp, AlertTriangle, Activity, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Package, MapPin, Users, Wrench, TrendingUp, AlertTriangle, Activity, AlertCircle, MapPinOff, Trash2, FileWarning } from 'lucide-react';
 
 async function getDashboardStats(userRole, userDnb) {
   await connectDB();
@@ -28,6 +29,9 @@ async function getDashboardStats(userRole, userDnb) {
     discardedAssets,
     totalDNBs,
     totalUsers,
+    naoLocalizados,
+    inservíveis,
+    descricaoIncompleta,
     assetsByType,
     assetsByDNB,
     recentAssets
@@ -40,6 +44,9 @@ async function getDashboardStats(userRole, userDnb) {
     Asset.countDocuments({ ...assetQuery, situacao: 'Descartado' }),
     DNB.countDocuments({ active: true }),
     User.countDocuments({ active: true }),
+    Asset.countDocuments({ ...assetQuery, statusLocalizacao: 'Não Localizado' }),
+    Asset.countDocuments({ ...assetQuery, situacaoOperacional: 'Inservível' }),
+    Asset.countDocuments({ ...assetQuery, descricaoCompleta: false }),
     Asset.aggregate([
       { $match: assetQuery },
       { $group: { _id: '$categoria', count: { $sum: 1 } } },
@@ -79,6 +86,9 @@ async function getDashboardStats(userRole, userDnb) {
     discardedAssets,
     totalDNBs,
     totalUsers,
+    naoLocalizados,
+    inservíveis,
+    descricaoIncompleta,
     assetsByType,
     assetsByDNB,
     recentAssets
@@ -148,6 +158,45 @@ export default async function DashboardPage() {
           Visão geral do inventário — {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
+
+      {/* Alertas Patrimoniais — só para gestor/administrador */}
+      {(session.user.role === 'gestor' || session.user.role === 'administrador') && (stats.naoLocalizados > 0 || stats.inservíveis > 0 || stats.descricaoIncompleta > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {stats.naoLocalizados > 0 && (
+            <Link href="/dashboard/nao-localizados"
+              className="flex items-center gap-4 px-5 py-4 rounded-lg transition-all"
+              style={{ background: "#ff2d5510", border: "1px solid #ff2d5540" }}>
+              <MapPinOff className="h-6 w-6 flex-shrink-0" style={{ color: "#ff2d55" }} />
+              <div>
+                <p className="text-2xl font-bold font-mono" style={{ color: "#ff2d55" }}>{stats.naoLocalizados}</p>
+                <p className="text-xs font-mono" style={{ color: "#94a3b8" }}>Não Localizados</p>
+              </div>
+            </Link>
+          )}
+          {stats.inservíveis > 0 && (
+            <Link href="/dashboard/alienacao"
+              className="flex items-center gap-4 px-5 py-4 rounded-lg transition-all"
+              style={{ background: "#fbbf2410", border: "1px solid #fbbf2440" }}>
+              <Trash2 className="h-6 w-6 flex-shrink-0" style={{ color: "#fbbf24" }} />
+              <div>
+                <p className="text-2xl font-bold font-mono" style={{ color: "#fbbf24" }}>{stats.inservíveis}</p>
+                <p className="text-xs font-mono" style={{ color: "#94a3b8" }}>Para Alienação</p>
+              </div>
+            </Link>
+          )}
+          {stats.descricaoIncompleta > 0 && (
+            <Link href="/dashboard/descricao-incompleta"
+              className="flex items-center gap-4 px-5 py-4 rounded-lg transition-all"
+              style={{ background: "#fbbf2410", border: "1px solid #fbbf2440" }}>
+              <FileWarning className="h-6 w-6 flex-shrink-0" style={{ color: "#fbbf24" }} />
+              <div>
+                <p className="text-2xl font-bold font-mono" style={{ color: "#fbbf24" }}>{stats.descricaoIncompleta}</p>
+                <p className="text-xs font-mono" style={{ color: "#94a3b8" }}>Descrição Incompleta</p>
+              </div>
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

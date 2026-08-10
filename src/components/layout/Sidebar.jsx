@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { getAssetCounts } from "@/lib/actions/assets";
 import {
   LayoutDashboard,
   Package,
@@ -17,6 +19,9 @@ import {
   Cpu,
   Factory,
   Building2,
+  MapPinOff,
+  Trash2,
+  FileWarning,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -104,6 +109,11 @@ const roleColors = {
 
 export function Sidebar({ user }) {
   const pathname = usePathname();
+  const [counts, setCounts] = useState({ naoLocalizados: 0, inservíveis: 0, descricaoIncompleta: 0 });
+
+  useEffect(() => {
+    getAssetCounts().then(setCounts).catch(() => {});
+  }, []);
 
   const filteredNavigation = navigation.filter((item) =>
     item.roles.includes(user.role)
@@ -113,6 +123,12 @@ export function Sidebar({ user }) {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname === href || pathname.startsWith(href + "/");
   };
+
+  const patrimonialLinks = [
+    { name: "Não Localizados", href: "/dashboard/nao-localizados", icon: MapPinOff, count: counts.naoLocalizados, color: "#ff2d55" },
+    { name: "Alienação", href: "/dashboard/alienacao", icon: Trash2, count: counts.inservíveis, color: "#fbbf24" },
+    { name: "Desc. Incompleta", href: "/dashboard/descricao-incompleta", icon: FileWarning, count: counts.descricaoIncompleta, color: "#fbbf24" },
+  ];
 
   return (
     <div
@@ -211,6 +227,34 @@ export function Sidebar({ user }) {
           );
         })}
       </nav>
+
+      {/* Gestão Patrimonial */}
+      {(user.role === "gestor" || user.role === "administrador") && (
+        <div className="mt-4 pt-3" style={{ borderTop: "1px solid #1a3a4a30" }}>
+          <p className="text-xs font-mono uppercase tracking-widest px-3 pb-2 mb-1" style={{ color: "#1a3a4a", borderBottom: "1px solid #1a3a4a10" }}>
+            Gestão Patrimonial
+          </p>
+          {patrimonialLinks.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link key={item.name} href={item.href}
+                className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-all duration-150 border-l-2", active ? "" : "border-transparent")}
+                style={active ? { background: "#00d4ff0f", borderLeftColor: "#00d4ff", color: "#00d4ff" } : { color: "#64748b" }}
+                onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "#00d4ff08"; e.currentTarget.style.color = "#94a3b8"; } }}
+                onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748b"; } }}>
+                <item.icon className="h-4 w-4 flex-shrink-0" style={active ? { color: "#00d4ff" } : {}} />
+                <span className={cn("flex-1", active ? "font-semibold" : "")}>{item.name}</span>
+                {item.count > 0 && (
+                  <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ background: `${item.color}20`, color: item.color, border: `1px solid ${item.color}40` }}>
+                    {item.count}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {/* User Info */}
       <div
