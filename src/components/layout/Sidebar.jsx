@@ -23,6 +23,7 @@ import {
   Trash2,
   FileWarning,
   FileUp,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,7 @@ export function Sidebar({ user }) {
     { name: "Alienação", href: "/dashboard/alienacao", icon: Trash2, count: counts.inservíveis, color: "#fbbf24" },
     { name: "Desc. Incompleta", href: "/dashboard/descricao-incompleta", icon: FileWarning, count: counts.descricaoIncompleta, color: "#fbbf24" },
     { name: "Importar Planilha", href: "/dashboard/importar", icon: FileUp, count: 0, color: "#a855f7" },
+    { name: "Inventário", href: "/dashboard/inventario", icon: ClipboardList, count: 0, color: "#00d4ff" },
   ];
 
   return (
