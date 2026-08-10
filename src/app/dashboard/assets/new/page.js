@@ -12,6 +12,15 @@ import Link from "next/link";
 import { ChevronRight, Save, X, Upload, Trash2, Package, Wifi, Camera } from "lucide-react";
 import { CameraCapture } from "@/components/CameraCapture";
 
+const PROPRIETARIOS = ['NAV BRASIL', 'UNIÃO', 'OUTROS'];
+const VIDA_UTIL_SUGERIDA = [
+  { label: '3 anos (36m)', value: 36 },
+  { label: '5 anos (60m)', value: 60 },
+  { label: '7 anos (84m)', value: 84 },
+  { label: '10 anos (120m)', value: 120 },
+  { label: '25 anos (300m)', value: 300 },
+];
+
 const SITUACOES_TI = [
   "Em estoque", "Em uso", "Ativo", "Reserva",
   "Em manutenção", "Com defeito", "Descartado",
@@ -177,6 +186,9 @@ const DEFAULT_ASSET_FORM = {
   // Situação Patrimonial
   situacaoBem: "Uso próprio", situacaoOperacional: "Em uso",
   condicoesUso: true, classificacaoInservivel: "", statusLocalizacao: "Localizado", descricaoCompleta: true,
+  // Dados Financeiros
+  proprietario: "NAV BRASIL", contaNav: "", centroCusto: "", contabilizado: false,
+  valor: "", dataAquisicao: "", dataServico: "", vidaUtilMeses: "", valorResidual: "",
   // Rede / TI
   hostname: "", enderecoIp: "", sistemaOperacional: "", ipGerencia: "", redeVlan: "", portasConexoes: "",
   // TI
@@ -601,6 +613,98 @@ export default function NewAssetPage() {
                 checked={formData.descricaoCompleta}
                 onChange={(v) => handleChange("descricaoCompleta", v)}
                 label={formData.descricaoCompleta ? "Descrição completa" : "Descrição incompleta"}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Dados Financeiros ─────────────────────────────────────────────── */}
+        <div className="rounded-lg p-5" style={{ background: "#0f0f1a", border: "1px solid #1a3a4a" }}>
+          <SectionTitle>Dados Financeiros</SectionTitle>
+          <p className="text-xs font-mono mb-4" style={{ color: "#374151" }}>
+            Equivale às colunas "Proprietário", "Valor do Bem", "Data de incorporação", "Vida útil" e "Valor Residual" da planilha NAV Brasil.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <CyberLabel htmlFor="proprietario">Proprietário</CyberLabel>
+              <CyberSelect id="proprietario" value={formData.proprietario}
+                onChange={(e) => handleChange("proprietario", e.target.value)}>
+                {PROPRIETARIOS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </CyberSelect>
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="valor">Valor do Bem (R$)</CyberLabel>
+              <CyberInput id="valor" type="number" min="0" step="0.01"
+                placeholder="0,00"
+                value={formData.valor}
+                onChange={(e) => handleChange("valor", e.target.value)} />
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="dataAquisicao">Data de Incorporação</CyberLabel>
+              <CyberInput id="dataAquisicao" type="date"
+                value={formData.dataAquisicao}
+                onChange={(e) => handleChange("dataAquisicao", e.target.value)} />
+              <p className="text-xs mt-1" style={{ color: "#374151" }}>= "Data de incorporação" na planilha NAV</p>
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="dataServico">Data de Entrada em Serviço</CyberLabel>
+              <CyberInput id="dataServico" type="date"
+                value={formData.dataServico}
+                onChange={(e) => handleChange("dataServico", e.target.value)} />
+              <p className="text-xs mt-1" style={{ color: "#374151" }}>= "Data de serviço" na planilha NAV (base do cálculo de depreciação)</p>
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="vidaUtilMeses">Vida Útil (meses)</CyberLabel>
+              <CyberInput id="vidaUtilMeses" type="number" min="0"
+                placeholder="Ex: 120"
+                value={formData.vidaUtilMeses}
+                onChange={(e) => handleChange("vidaUtilMeses", e.target.value)} />
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {VIDA_UTIL_SUGERIDA.map((v) => (
+                  <button key={v.value} type="button"
+                    onClick={() => handleChange("vidaUtilMeses", String(v.value))}
+                    className="px-2 py-0.5 rounded text-xs font-mono transition-all"
+                    style={formData.vidaUtilMeses === String(v.value)
+                      ? { background: "#00d4ff", color: "#0a0a0f" }
+                      : { background: "#141428", border: "1px solid #1a3a4a", color: "#64748b" }}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="valorResidual">Valor Residual (R$)</CyberLabel>
+              <CyberInput id="valorResidual" type="number" min="0" step="0.01"
+                placeholder="0,00"
+                value={formData.valorResidual}
+                onChange={(e) => handleChange("valorResidual", e.target.value)} />
+              <p className="text-xs mt-1" style={{ color: "#374151" }}>Valor mínimo ao fim da vida útil</p>
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="contaNav">Conta Nav</CyberLabel>
+              <CyberInput id="contaNav" placeholder="Código contábil da NAV"
+                value={formData.contaNav}
+                onChange={(e) => handleChange("contaNav", e.target.value)} />
+            </div>
+
+            <div>
+              <CyberLabel htmlFor="centroCusto">Centro de Custo</CyberLabel>
+              <CyberInput id="centroCusto" placeholder="Ex: 141402"
+                value={formData.centroCusto}
+                onChange={(e) => handleChange("centroCusto", e.target.value)} />
+            </div>
+
+            <div className="md:col-span-2">
+              <Toggle
+                checked={formData.contabilizado}
+                onChange={(v) => handleChange("contabilizado", v)}
+                label={formData.contabilizado ? "Contabilizado no ERP" : "Não contabilizado"}
               />
             </div>
           </div>

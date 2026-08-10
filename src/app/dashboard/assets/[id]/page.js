@@ -5,7 +5,7 @@ import { getAssetById } from '@/lib/actions/assets';
 import Link from 'next/link';
 import {
   ChevronRight, Edit, Zap, Package, MapPin, Monitor,
-  Wifi, FileText, Clock, Link2, ShieldCheck, User,
+  Wifi, FileText, Clock, Link2, ShieldCheck, User, DollarSign,
 } from 'lucide-react';
 
 function getSituacaoStyle(situacao) {
@@ -111,6 +111,26 @@ export default async function AssetDetailPage({ params }) {
     if (!date) return null;
     try { return new Date(date).toLocaleString('pt-BR'); } catch { return null; }
   };
+
+  // Cálculo de depreciação (apenas leitura — não armazenado no banco)
+  const calcDeprec = (() => {
+    if (!asset.valor || !asset.vidaUtilMeses || asset.vidaUtilMeses <= 0) return null;
+    const residual = asset.valorResidual || 0;
+    const depMensal = (asset.valor - residual) / asset.vidaUtilMeses;
+    const dataBase = asset.dataServico || asset.dataAquisicao;
+    if (!dataBase) return { depMensal, mesesEmServico: null, depreciacaoAcum: null, valorLiquido: null, vidaUtilRestante: null };
+    const inicio = new Date(dataBase);
+    const hoje = new Date();
+    const mesesEmServico = Math.max(0, (hoje.getFullYear() - inicio.getFullYear()) * 12 + (hoje.getMonth() - inicio.getMonth()));
+    const depreciacaoAcum = Math.min(asset.valor - residual, depMensal * mesesEmServico);
+    const valorLiquido = Math.max(residual, asset.valor - depreciacaoAcum);
+    const vidaUtilRestante = Math.max(0, asset.vidaUtilMeses - mesesEmServico);
+    return { depMensal, mesesEmServico, depreciacaoAcum, valorLiquido, vidaUtilRestante };
+  })();
+
+  const fmtBRL = (v) => v != null ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : null;
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : null;
+  const hasFinanceiro = asset.valor != null || asset.proprietario || asset.dataAquisicao;
 
   const hasPatrimonial = asset.situacaoBem || asset.situacaoOperacional ||
     asset.condicoesUso !== undefined || asset.statusLocalizacao ||
@@ -263,6 +283,51 @@ export default async function AssetDetailPage({ params }) {
             <InfoRow label="IP de Gerência" value={asset.ipGerencia} />
             <InfoRow label="Rede / VLAN" value={asset.redeVlan} />
             <InfoRow label="Portas / Conexões" value={asset.portasConexoes} />
+          </Section>
+        )}
+
+        {/* Dados Financeiros */}
+        {hasFinanceiro && (
+          <Section title="Dados Financeiros" icon={DollarSign}>
+            <InfoRow label="Proprietário" value={asset.proprietario} />
+            <InfoRow label="Valor do Bem" value={fmtBRL(asset.valor)} />
+            <InfoRow label="Data de Incorporação" value={fmtDate(asset.dataAquisicao)} />
+            <InfoRow label="Data de Serviço" value={fmtDate(asset.dataServico)} />
+            <InfoRow label="Vida Útil" value={asset.vidaUtilMeses ? `${asset.vidaUtilMeses} meses` : null} />
+            <InfoRow label="Valor Residual" value={fmtBRL(asset.valorResidual)} />
+            {calcDeprec && (
+              <>
+                <div className="pt-2 pb-1" style={{ borderTop: '1px solid #1a3a4a40' }}>
+                  <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#00d4ff80' }}>Depreciação calculada</p>
+                </div>
+                <InfoRow label="Depreciação Mensal" value={fmtBRL(calcDeprec.depMensal)} />
+                {calcDeprec.mesesEmServico != null && (
+                  <>
+                    <InfoRow label="Meses em Serviço" value={String(calcDeprec.mesesEmServico)} />
+                    <InfoRow label="Deprec. Acumulada" value={fmtBRL(calcDeprec.depreciacaoAcum)} />
+                    <InfoRow label="Valor Líquido" value={fmtBRL(calcDeprec.valorLiquido)} />
+                    <div className="py-2">
+                      <div className="flex justify-between text-xs font-mono mb-1">
+                        <span style={{ color: '#64748b' }}>Vida útil restante</span>
+                        <span style={{ color: calcDeprec.vidaUtilRestante === 0 ? '#ff2d55' : '#00d4ff' }}>
+                          {calcDeprec.vidaUtilRestante === 0 ? 'VENCIDA' : `${calcDeprec.vidaUtilRestante}m restantes`}
+                        </span>
+                      </div>
+                      <div className="w-full rounded-full h-1.5" style={{ background: '#1a3a4a' }}>
+                        <div className="h-1.5 rounded-full transition-all"
+                          style={{
+                            width: `${Math.min(100, (calcDeprec.mesesEmServico / asset.vidaUtilMeses) * 100)}%`,
+                            background: calcDeprec.vidaUtilRestante === 0 ? '#ff2d55' : calcDeprec.vidaUtilRestante < 12 ? '#fbbf24' : '#00d4ff',
+                          }} />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+            <InfoRow label="Conta Nav" value={asset.contaNav} />
+            <InfoRow label="Centro de Custo" value={asset.centroCusto} />
+            <BoolRow label="Contabilizado" trueLabel="Sim" falseLabel="Não" value={asset.contabilizado} />
           </Section>
         )}
 

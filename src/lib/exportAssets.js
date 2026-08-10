@@ -37,6 +37,16 @@ export function exportAssetsToCSV(assets, filename = 'ativos') {
     'Condições de Uso',        // = "Condições de Uso" na planilha NAV
     'Classificação (Inservível)', // = "Classificação" na planilha NAV
     'Descrição Completa',      // = "Descrição" na planilha NAV
+    // ── Dados Financeiros ─────────────────────────────────────────────────
+    'Proprietário',            // = "Proprietário" na planilha NAV
+    'Valor do Bem (R$)',       // = "Valor do Bem" na planilha NAV
+    'Valor Residual (R$)',     // = "Valor Residual" na planilha NAV
+    'Data de Incorporação',    // = "Data de incorporação" na planilha NAV
+    'Data de Serviço',         // = "Data de serviço" na planilha NAV
+    'Vida Útil (meses)',       // = "Vida útil" na planilha NAV
+    'Conta Nav',               // = "Conta Nav" na planilha NAV
+    'Centro de Custo',         // = "Centro de Custo" na planilha NAV
+    'Contabilizado',
     // ── Situação Interna de TI ────────────────────────────────────────────
     'Situação (TI)',
     // ── Rede ─────────────────────────────────────────────────────────────
@@ -82,6 +92,15 @@ export function exportAssetsToCSV(assets, filename = 'ativos') {
     boolStr(asset.condicoesUso),
     asset.classificacaoInservivel || '',
     boolStr(asset.descricaoCompleta),
+    asset.proprietario || '',
+    asset.valor != null ? asset.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '',
+    asset.valorResidual != null ? asset.valorResidual.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '',
+    asset.dataAquisicao ? new Date(asset.dataAquisicao).toLocaleDateString('pt-BR') : '',
+    asset.dataServico ? new Date(asset.dataServico).toLocaleDateString('pt-BR') : '',
+    asset.vidaUtilMeses != null ? String(asset.vidaUtilMeses) : '',
+    asset.contaNav || '',
+    asset.centroCusto || '',
+    boolStr(asset.contabilizado),
     asset.situacao || '',
     asset.hostname || '',
     asset.enderecoIp || '',

@@ -135,6 +135,49 @@ const AssetSchema = new mongoose.Schema({
     default: true,
   },
 
+  // ── Dados Financeiros ─────────────────────────────────────────────────────
+  proprietario: {
+    type: String,
+    enum: ['NAV BRASIL', 'UNIÃO', 'OUTROS'],
+    default: 'NAV BRASIL',
+  },
+  contaNav: {
+    type: String,
+    trim: true,
+  },
+  contabilizado: {
+    type: Boolean,
+    default: false,
+  },
+  // "Valor do Bem" na planilha — valor original de aquisição em R$
+  valor: {
+    type: Number,
+    min: 0,
+  },
+  // "Data de incorporação" na planilha
+  dataAquisicao: {
+    type: Date,
+  },
+  // "Data de serviço" na planilha — entrada em operação (pode diferir de dataAquisicao)
+  dataServico: {
+    type: Date,
+  },
+  // "Vida útil" na planilha — total em meses (base do cálculo de depreciação)
+  vidaUtilMeses: {
+    type: Number,
+    min: 0,
+  },
+  // "Valor Residual" na planilha — valor mínimo ao fim da vida útil em R$
+  valorResidual: {
+    type: Number,
+    min: 0,
+    default: 0,
+  },
+  // Calculados na apresentação (não armazenados):
+  //   depreciacaoMensal = (valor - valorResidual) / vidaUtilMeses
+  //   valorLiquido      = max(0, valor - depreciacaoMensal × mesesEmServico)
+  //   vidaUtilRestante  = vidaUtilMeses - mesesEmServico
+
   // ── Situação Interna de TI ────────────────────────────────────────────────
   // Campo operacional interno (não equivale à "Situação" da planilha NAV)
   situacao: {
